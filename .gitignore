@@ -1,6 +1,7 @@
 # Julia
 Manifest*.toml
 docs/build/
+test/output/
 
 # General
 .DS_Store
