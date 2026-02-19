@@ -38,9 +38,7 @@ A container for the utility function's derivatives.
 """
 Base.@kwdef struct UtilityFunctions
     u::Function
-    first_derivative::Function   # Keep for backward compatibility
-    second_derivative::Function  # Keep for backward compatibility
-    nth_derivative::Function     # The cached accessor function
+    nth_derivative::Function
     inverse::Function
 end
 

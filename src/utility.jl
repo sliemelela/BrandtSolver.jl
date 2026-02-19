@@ -29,24 +29,18 @@ function create_utility_from_ad(base_utility_func::Function)
         return new_deriv
     end
 
-    # Pre-calculate standard ones for backward compatibility
-    u_prime = get_deriv(1)
-    u_double_prime = get_deriv(2)
-
     # Create Inverse Utility (Same as before)
     function inverse_utility(target_val)
         f(W) = base_utility_func(W) - target_val
         W_initial_guess = 1.0
         # Uses the cached u_prime
-        W_solution = find_zero((f, u_prime), W_initial_guess, Roots.Newton())
+        W_solution = find_zero((f, deriv_cache[1]), W_initial_guess, Roots.Newton())
         return W_solution
     end
 
     # Return the updated struct
     return UtilityFunctions(
         u = base_utility_func,
-        first_derivative = u_prime,
-        second_derivative = u_double_prime,
         nth_derivative = get_deriv, # Pass the getter function
         inverse = inverse_utility
     )
