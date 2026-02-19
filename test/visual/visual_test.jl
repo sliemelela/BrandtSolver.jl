@@ -125,8 +125,8 @@ end
 
     # 1. Run Solver
     println("  > Running Solver...")
-    world, params, utility = setup_fast_merton_market()
-    # world, params, utility = setup_fast_market()
+    # world, params, utility = setup_fast_merton_market()
+    world, params, utility = setup_fast_market()
     policies = solve_portfolio_problem(world, params, utility)
 
     @test length(policies) == world.config.M + 1

@@ -58,8 +58,6 @@ function setup_merton_environment(; sims=10_000, T=5.0, M=5)
         W_grid = [50.0, 75.0, 100.0, 125.0, 150.0],
         poly_order = 2,
         max_taylor_order = 4,
-        p_income = 0.0,
-        O_t_real_path = nothing,
         trimming_α = 0.0,
         γ = 5.0
     )

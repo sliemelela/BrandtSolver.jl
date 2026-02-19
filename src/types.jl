@@ -31,8 +31,6 @@ Base.@kwdef struct SolverParams
     W_grid::Vector{Float64}
     poly_order::Int
     max_taylor_order::Int
-    p_income::Float64
-    O_t_real_path::Union{String, Nothing}
     trimming_α::Float64
     γ::Float64
 end

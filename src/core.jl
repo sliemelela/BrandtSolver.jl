@@ -360,10 +360,12 @@ function solve_portfolio_problem(
     world::SimulationWorld,
     solver_params::SolverParams,
     utility::UtilityFunctions;
+    O_t_real_path::Union{String, Nothing} = nothing,
+    p_income::Float64 = 0.0,
     recorder::AbstractSolverRecorder = NoOpRecorder()
 )
-    (; asset_names, state_names, W_grid, poly_order, max_taylor_order, p_income,
-        trimming_α, O_t_real_path) = solver_params
+    (; asset_names, state_names, W_grid, poly_order, max_taylor_order,
+        trimming_α) = solver_params
 
     # API Compatibility
     sim = world.config.sims
@@ -409,18 +411,20 @@ function calculate_expected_utility(
     t_start,
     W_start,
     ω_force,
-    utility_struct
+    utility_struct;
+    p_income::Float64 = 0.0,
+    O_t_real_path::Union{String, Nothing} = nothing,
 )
     sim = world.config.sims
     T_steps = world.config.M + 1
 
-    if solver_params.O_t_real_path === nothing
+    if O_t_real_path === nothing
         O_t_full = zeros(sim, T_steps)
     else
-        O_t_full = getproperty(world.paths, Symbol(solver_params.O_t_real_path))
+        O_t_full = getproperty(world.paths, Symbol(O_t_real_path))
     end
 
-    X_full, Y_full = create_risk_free_return_components(world, solver_params.p_income, O_t_full)
+    X_full, Y_full = create_risk_free_return_components(world, p_income, O_t_full)
     Re_full = package_excess_returns(world, solver_params.asset_names)
 
     _, W_T = simulate_wealth_trajectory(
