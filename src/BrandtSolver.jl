@@ -10,8 +10,6 @@ using NonlinearSolve
 using Roots
 using CairoMakie
 
-
-
 # Core Exports
 export SolverParams, UtilityFunctions
 export StandardOLS, TrimmedOLS
