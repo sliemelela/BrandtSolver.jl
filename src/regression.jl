@@ -21,15 +21,18 @@ The final column order is:
 # Examples
 ```jldoctest
 julia> X1 = [1.0, 2.0, 3.0];
+
 julia> X2 = [4.0, 5.0, 6.0];
+
 julia> Z = [X1, X2]; # n=2 predictors, sim=3 observations
+
 julia> p = 2; # Max degree
 
-julia> power_matrix(Z, p)
+julia> BrandtSolver.power_matrix(Z, p)
 3×5 Matrix{Float64}:
- 1.0  1.0  1.0   4.0  16.0
- 1.0  2.0  4.0   5.0  25.0
- 1.0  3.0  9.0   6.0  36.0
+ 1.0  1.0  1.0  4.0  16.0
+ 1.0  2.0  4.0  5.0  25.0
+ 1.0  3.0  9.0  6.0  36.0
 ```
 """
 function power_matrix(Z::Vector{Vector{Float64}}, p::Int)

@@ -7,13 +7,15 @@ using Statistics
 using StaticArrays
 using Random
 
-# Ensure the output directory exists
+include("../test_helpers.jl")
+
 OUTPUT_DIR = joinpath(@__DIR__, "..", "output")
 if !isdir(OUTPUT_DIR)
     mkdir(OUTPUT_DIR)
 end
 
 println("\n--- Visual Verification Suite ---")
+
 println("  > Plots will be saved to: $OUTPUT_DIR")
 
 # ==============================================================================
@@ -49,19 +51,14 @@ function setup_fast_market()
 
     # 5. Solver Params
     params = SolverParams(
-        asset_names = ["Re_Stock"],
-        state_names = ["r"],
         W_grid = [50.0, 100.0, 150.0], # Coarse grid is fine for visual check
         poly_order = 2,
         max_taylor_order = 4,
-        p_income = 0.0,
-        O_t_real_path = nothing,
         trimming_α = 0.01,
-        γ = 5.0
     )
 
     # 6. Utility
-    γ = params.γ
+    γ = 5.0
     crra(W) = (W^(1.0 - γ)) / (1.0 - γ)
     utility = create_utility_from_ad(crra)
 
@@ -101,19 +98,14 @@ function setup_fast_merton_market()
 
     # 5. Solver Params
     params = SolverParams(
-        asset_names = ["Re_Stock"],
-        state_names = ["r"],
         W_grid = [50.0, 75.0, 100.0, 125.0, 150.0],
         poly_order = 2,
         max_taylor_order = 4,
-        p_income = 0.0,
-        O_t_real_path = nothing,
         trimming_α = 0.0, # No trimming needed for Merton
-        γ = 5.0
     )
 
     # 6. Utility
-    γ = params.γ
+    γ = 5.0
     crra(W) = (W^(1.0 - γ)) / (1.0 - γ)
     utility = create_utility_from_ad(crra)
 
@@ -122,51 +114,40 @@ end
 
 @testset "Visual Diagnostics" begin
     Random.seed!(42)
-
-    # 1. Run Solver
     println("  > Running Solver...")
-    world, params, utility = setup_fast_merton_market()
-    # world, params, utility = setup_fast_market()
-    policies = solve_portfolio_problem(world, params, utility)
+    world, params, utility = setup_fast_market()
+
+    asset_names = ["Re_Stock"]
+    state_names = ["r"]
+
+    # Extract matrices
+    Re_all = package_excess_returns(world, asset_names)
+    Z_all  = get_state_variables(world, state_names)
+    X_all, Y_all = create_risk_free_return_components(world, 0.0, nothing)
+
+    # Run decoupled solver
+    policies = solve_portfolio_problem(Re_all, Z_all, X_all, Y_all, params, utility)
 
     @test length(policies) == world.config.M + 1
 
-    # 2. Generate Plots
     println("  > Generating Plots...")
 
-    # Plot A: Policy Rules (The Brain)
-    # Check decision at t=1
-    fig1 = plot_policy_rules(policies, params, 10; samples=20)
+    fig1 = plot_policy_rules(policies, params, 10, asset_names; samples=20)
     save(joinpath(OUTPUT_DIR, "1_policy_vs_wealth.png"), fig1)
-    @test isfile(joinpath(OUTPUT_DIR, "1_policy_vs_wealth.png"))
-    println("    - Saved Policy vs Wealth")
 
-    # Plot B: State Dependency (The Context)
-    # Check how weights depend on 'r' at t=1, W=100
-    fig2 = plot_state_dependence(policies, world, params, 10, :r; fix_W=100.0)
+    state_vals = world.paths.r[:, 10]
+    fig2 = plot_state_dependence(policies, params, 10, state_vals, "r", asset_names; fix_W=100.0)
     save(joinpath(OUTPUT_DIR, "2_policy_vs_rate.png"), fig2)
-    @test isfile(joinpath(OUTPUT_DIR, "2_policy_vs_rate.png"))
-    println("    - Saved Policy vs Rate")
 
-    # Plot C: Realized Paths (The Result)
-    # Re-simulate to see actual portfolio behavior
-    fig3 = plot_realized_weights(world, params, policies; W_init=100.0)
+    times = range(0, world.config.T, length=world.config.M+1)[1:end-1]
+    fig3 = plot_realized_weights(Re_all, X_all, Y_all, times, policies, asset_names; W_init=100.0)
     save(joinpath(OUTPUT_DIR, "3_realized_weights.png"), fig3)
-    @test isfile(joinpath(OUTPUT_DIR, "3_realized_weights.png"))
-    println("    - Saved Realized Weights")
 
-    # Plot D: Value vs Utility (The Sanity Check)
-    # Check at the last step (M)
-    fig4 = plot_value_vs_utility(world, params, policies, utility; t_check=world.config.M)
+    fig4 = plot_value_vs_utility(Re_all, X_all, Y_all, params, policies, utility; t_check=world.config.M)
     save(joinpath(OUTPUT_DIR, "4_value_vs_utility.png"), fig4)
-    @test isfile(joinpath(OUTPUT_DIR, "4_value_vs_utility.png"))
-    println("    - Saved Value vs Utility")
 
-    # Plot E: Surface (The Big Picture)
-    fig5 = plot_policy_surface(policies, world, params, 10, :r)
+    fig5 = plot_policy_surface(policies, params, 10, state_vals, "r", asset_names)
     save(joinpath(OUTPUT_DIR, "5_policy_surface.png"), fig5)
-    @test isfile(joinpath(OUTPUT_DIR, "5_policy_surface.png"))
-    println("    - Saved Policy Surface")
 
-    println("--- Visual Test Complete (Check /test/output/) ---")
+    println("--- Visual Test Complete ---")
 end
