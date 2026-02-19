@@ -11,8 +11,8 @@ using Test
         utils = create_utility_from_ad(simple_u)
 
         W_val = 2.0
-        @test utils.first_derivative(W_val) ≈ 12.0  # 3 * 2^2
-        @test utils.second_derivative(W_val) ≈ 12.0 # 6 * 2
+        @test utils.nth_derivative(1)(W_val) ≈ 12.0 # 3 * 2^2
+        @test utils.nth_derivative(2)(W_val) ≈ 12.0  # 6 * 2
     end
 
     # 2. Regression Matrix Construction
