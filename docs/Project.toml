@@ -1,0 +1,6 @@
+[deps]
+BrandtSolver = "383f7842-7e3d-42de-94bc-9d75093b1446"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[sources]
+BrandtSolver = {path = ".."}

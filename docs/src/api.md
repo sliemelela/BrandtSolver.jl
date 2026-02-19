@@ -1,0 +1,4 @@
+# Test
+```@autodocs
+Modules = [BrandtSolver]
+```
