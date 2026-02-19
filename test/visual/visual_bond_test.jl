@@ -7,14 +7,15 @@ using Statistics
 using StaticArrays
 using Random
 
-# Ensure the output directory exists
+include("../test_helpers.jl")
+
 OUTPUT_DIR = joinpath(@__DIR__, "..", "output")
 if !isdir(OUTPUT_DIR)
     mkdir(OUTPUT_DIR)
 end
 
 println("\n--- Visual Verification: Bond + Stock Portfolio ---")
-println("  > Plots will be saved to: $OUTPUT_DIR")
+
 
 # ==============================================================================
 # 1. SETUP (Stochastic Rates Market)
@@ -59,17 +60,14 @@ function setup_bond_market()
 
     # 6. Solver Params
     params = SolverParams(
-        asset_names = ["Re_Stock", "Re_Bond"], # <--- Two Assets now!
-        state_names = ["r"],                   # State variable
         W_grid = [50.0, 100.0, 150.0, 200.0],
         poly_order = 2,
         max_taylor_order = 4,
         trimming_α = 0.01,
-        γ = 5.0
     )
 
     # 7. Utility
-    γ = params.γ
+    γ = 5.0
     crra(W) = (W^(1.0 - γ)) / (1.0 - γ)
     utility = create_utility_from_ad(crra)
 
@@ -122,17 +120,14 @@ function setup_bond_market_merton_stock()
 
     # 6. Solver Params
     params = SolverParams(
-        asset_names = ["Re_Stock", "Re_Bond"],
-        state_names = ["r"],
         W_grid = [50.0, 100.0, 150.0, 200.0],
         poly_order = 2,
         max_taylor_order = 4,
         trimming_α = 0.01,
-        γ = 5.0
     )
 
     # 7. Utility
-    γ = params.γ
+    γ = 5.0
     crra(W) = (W^(1.0 - γ)) / (1.0 - γ)
     utility = create_utility_from_ad(crra)
 
@@ -142,45 +137,38 @@ end
 @testset "Visual Bond Diagnostics" begin
     Random.seed!(999)
 
-    # 1. Run Solver
     println("  > Running Solver...")
-    # world, params, utility = setup_bond_market()
     world, params, utility = setup_bond_market_merton_stock()
-    policies = solve_portfolio_problem(world, params, utility)
 
-    # 2. Generate Plots
+    asset_names = ["Re_Stock", "Re_Bond"]
+    state_names = ["r"]
+
+    # Extract matrices
+    Re_all = package_excess_returns(world, asset_names)
+    Z_all  = get_state_variables(world, state_names)
+    X_all, Y_all = create_risk_free_return_components(world, 0.0, nothing)
+
+    # Run decoupled solver
+    policies = solve_portfolio_problem(Re_all, Z_all, X_all, Y_all, params, utility)
+
     println("  > Generating Plots...")
 
-    # Plot A: Policy Rules (The Brain)
-    # EXPECTATION: You should see 2 panels (Stock, Bond).
-    # Bond weights might slope with Wealth due to intertemporal hedging.
-    fig1 = plot_policy_rules(policies, params, 1; samples=20)
+    fig1 = plot_policy_rules(policies, params, 1, asset_names; samples=20)
     save(joinpath(OUTPUT_DIR, "bond_1_policy_vs_wealth.png"), fig1)
-    println("    - Saved Policy vs Wealth")
 
-    # Plot B: State Dependency (The Context)
-    # EXPECTATION: Strong relationship between Bond Weight and Interest Rate (r)
-    # because r drives the bond's volatility and drift directly.
-    fig2 = plot_state_dependence(policies, world, params, 1, :r; fix_W=100.0)
+    state_vals = world.paths.r[:, 1]
+    fig2 = plot_state_dependence(policies, params, 1, state_vals, "r", asset_names; fix_W=100.0)
     save(joinpath(OUTPUT_DIR, "bond_2_policy_vs_rate.png"), fig2)
-    println("    - Saved Policy vs Rate")
 
-    # Plot C: Realized Paths (The Result)
-    # EXPECTATION: Two distinct weight trajectories fluctuating over time.
-    fig3 = plot_realized_weights(world, params, policies; W_init=100.0)
+    times = range(0, world.config.T, length=world.config.M+1)[1:end-1]
+    fig3 = plot_realized_weights(Re_all, X_all, Y_all, times, policies, asset_names; W_init=100.0)
     save(joinpath(OUTPUT_DIR, "bond_3_realized_weights.png"), fig3)
-    println("    - Saved Realized Weights")
 
-    # Plot D: Value vs Utility (The Sanity Check)
-    fig4 = plot_value_vs_utility(world, params, policies, utility; t_check=world.config.M)
+    fig4 = plot_value_vs_utility(Re_all, X_all, Y_all, params, policies, utility; t_check=world.config.M)
     save(joinpath(OUTPUT_DIR, "bond_4_value_vs_utility.png"), fig4)
-    println("    - Saved Value vs Utility")
 
-    # Plot E: Surface (The Big Picture)
-    # 3D view of how weights change with W and r
-    fig5 = plot_policy_surface(policies, world, params, 1, :r)
+    fig5 = plot_policy_surface(policies, params, 1, state_vals, "r", asset_names)
     save(joinpath(OUTPUT_DIR, "bond_5_policy_surface.png"), fig5)
-    println("    - Saved Policy Surface")
 
-    println("--- Visual Bond Test Complete (Check /test/output/) ---")
+    println("--- Visual Bond Test Complete ---")
 end
