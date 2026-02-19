@@ -26,7 +26,10 @@ export plot_value_vs_utility, plot_policy_surface
 include("types.jl")
 include("utility.jl")
 include("regression.jl")
-include("core.jl")
+include("simulator.jl")
+include("expectations.jl")
+include("optimizer.jl")
+include("orchestrator.jl")
 include("plotting.jl")
 
 end
