@@ -26,7 +26,7 @@ function simulate_wealth_trajectory(
     Re_full::AbstractMatrix{<:SVector},   # <--- CHANGED
     future_policies::Vector{Vector{Any}};
     forced_policy_at_t_start=nothing,
-    recorder::AbstractSolverRecorder = NoOpRecorder()
+    recorder::AbstractPathRecorder = NoOpPathRecorder()
 )
     sim = length(W_start_vec)
     W_current = copy(W_start_vec)
@@ -277,7 +277,7 @@ function compute_expectations_and_policy(
         Re_all_paths,
         future_policies;
         forced_policy_at_t_start = zero_policy,
-        recorder = NoOpRecorder()
+        recorder = NoOpPathRecorder()
     )
 
     # Re_next_svec is a view of the matrix column
@@ -357,36 +357,19 @@ function create_policy_interpolators(
 end
 
 function solve_portfolio_problem(
-    world::SimulationWorld,
+    Re_all_paths::AbstractMatrix{<:SVector},
+    Z_all_paths::Vector{<:AbstractMatrix{Float64}},
+    X_all_paths::AbstractMatrix{Float64},
+    Y_all_paths::AbstractMatrix{Float64},
     solver_params::SolverParams,
     utility::UtilityFunctions;
-    O_t_real_path::Union{String, Nothing} = nothing,
-    p_income::Float64 = 0.0,
     recorder::AbstractSolverRecorder = NoOpRecorder()
 )
-    (; asset_names, state_names, W_grid, poly_order, max_taylor_order,
-        trimming_α) = solver_params
+    (; W_grid, poly_order, max_taylor_order, trimming_α) = solver_params
 
-    # API Compatibility
-    sim = world.config.sims
-    M   = world.config.M
-    T_steps = M + 1
+    sim, T_steps = size(X_all_paths)
 
     reg_strategy = trimming_α > 0.0 ? TrimmedOLS(trimming_α) : StandardOLS()
-
-    # Data Packaging
-    Re_all_paths = package_excess_returns(world, asset_names)
-    Z_all_paths = get_state_variables(world, state_names)
-
-    if O_t_real_path === nothing
-        O_t_real = zeros(sim, T_steps)
-    else
-        O_t_real = getproperty(world.paths, Symbol(O_t_real_path))
-    end
-
-    R_free_base, income_component = create_risk_free_return_components(
-        world, p_income, O_t_real
-    )
 
     future_policies = Vector{Vector{Any}}(undef, T_steps)
 
@@ -394,8 +377,8 @@ function solve_portfolio_problem(
         println("--- Processing Policy for Decision Time t = $t_decision ---")
 
         future_policies[t_decision] = create_policy_interpolators(
-            t_decision, W_grid, poly_order, Z_all_paths, R_free_base,
-            income_component, Re_all_paths, T_steps, utility, future_policies,
+            t_decision, W_grid, poly_order, Z_all_paths, X_all_paths,
+            Y_all_paths, Re_all_paths, T_steps, utility, future_policies,
             max_taylor_order, reg_strategy, recorder
         )
     end
@@ -405,38 +388,27 @@ function solve_portfolio_problem(
 end
 
 function calculate_expected_utility(
-    world,
-    solver_params,
-    future_policies,
-    t_start,
-    W_start,
-    ω_force,
-    utility_struct;
-    p_income::Float64 = 0.0,
-    O_t_real_path::Union{String, Nothing} = nothing,
+    Re_all_paths::AbstractMatrix{<:SVector},
+    X_all_paths::AbstractMatrix{Float64},
+    Y_all_paths::AbstractMatrix{Float64},
+    future_policies::Vector{Vector{Any}},
+    t_start::Int,
+    W_start::Float64,
+    ω_force::Union{Vector{<:SVector}, <:SVector},
+    utility_struct::UtilityFunctions
 )
-    sim = world.config.sims
-    T_steps = world.config.M + 1
-
-    if O_t_real_path === nothing
-        O_t_full = zeros(sim, T_steps)
-    else
-        O_t_full = getproperty(world.paths, Symbol(O_t_real_path))
-    end
-
-    X_full, Y_full = create_risk_free_return_components(world, p_income, O_t_full)
-    Re_full = package_excess_returns(world, solver_params.asset_names)
+    sim, T_steps = size(X_all_paths)
 
     _, W_T = simulate_wealth_trajectory(
         fill(W_start, sim),
         t_start,
         T_steps,
-        X_full,
-        Y_full,
-        Re_full,
+        X_all_paths,
+        Y_all_paths,
+        Re_all_paths,
         future_policies;
         forced_policy_at_t_start = ω_force,
-        recorder = NoOpRecorder()
+        recorder = NoOpPathRecorder()
     )
 
     W_valid = filter(w -> w > 1e-9, W_T)

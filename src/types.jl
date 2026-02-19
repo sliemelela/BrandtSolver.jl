@@ -26,13 +26,10 @@ struct TrimmedOLS <: RegressionStrategy
 end
 
 Base.@kwdef struct SolverParams
-    asset_names::Vector{String}
-    state_names::Vector{String}
     W_grid::Vector{Float64}
     poly_order::Int
     max_taylor_order::Int
     trimming_α::Float64
-    γ::Float64
 end
 
 """
