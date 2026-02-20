@@ -1,8 +1,24 @@
-using CairoMakie
-using Statistics
-using StaticArrays
-using LinearAlgebra
 
+"""
+    plot_policy_rules(future_policies, solver_params, t_idx, asset_names; samples=50)
+
+Plots the optimal portfolio allocation (weights) as a function of wealth (``W``) for a specific
+decision time `t_idx`.
+
+It plots a subset of individual simulation paths to show cross-sectional dispersion
+(due to varying state variables) and overlays a thick red line representing the mean policy across all simulations.
+
+# Arguments
+- `future_policies`: The nested vector of interpolated policy functions returned by the solver.
+- `solver_params`: The configuration parameters, specifically used to extract the `W_grid`.
+- `t_idx`: The decision time step to evaluate.
+- `asset_names`: A list of strings representing the asset names, used to generate subplots.
+- `samples`: (Keyword) The number of individual simulation paths to plot as semi-transparent lines
+    (defaults to 50).
+
+# Returns
+- A `Makie.Figure` object containing the generated plot.
+"""
 function plot_policy_rules(future_policies, solver_params, t_idx, asset_names; samples=50)
     W_grid = solver_params.W_grid
 
@@ -32,6 +48,25 @@ function plot_policy_rules(future_policies, solver_params, t_idx, asset_names; s
     return fig
 end
 
+"""
+    plot_state_dependence(future_policies, solver_params, t_idx, state_values::AbstractVector,
+        state_name::String, asset_names; fix_W=100.0)
+
+Plots the sensitivity of the optimal portfolio weights to a specific state variable
+(e.g., interest rate or dividend yield), holding wealth strictly constant at `fix_W`.
+
+# Arguments
+- `future_policies`: The nested vector of interpolated policy functions.
+- `solver_params`: The configuration parameters.
+- `t_idx`: The decision time step to evaluate.
+- `state_values`: A vector containing the cross-sectional values of the state variable at `t_idx`.
+- `state_name`: A string label for the state variable used for the x-axis.
+- `asset_names`: A list of strings representing the asset names.
+- `fix_W`: (Keyword) The constant wealth level at which to evaluate the policy (defaults to 100.0).
+
+# Returns
+- A `Makie.Figure` object containing the generated plot.
+"""
 function plot_state_dependence(future_policies, solver_params, t_idx, state_values::AbstractVector, state_name::String, asset_names; fix_W=100.0)
     policies_at_t = future_policies[t_idx]
     sims = length(policies_at_t)
@@ -53,6 +88,28 @@ function plot_state_dependence(future_policies, solver_params, t_idx, state_valu
     return fig
 end
 
+"""
+     plot_realized_weights(Re_all_paths, X_all_paths, Y_all_paths, times, future_policies,
+        asset_names; W_init=100.0)
+
+Simulates wealth paths forward in time using the computed optimal `future_policies` and plots
+the realized trajectories of the portfolio weights over the lifecycle.
+
+It overlays the mean realized weight and a 90% confidence interval band.
+Paths where wealth falls to zero (bankruptcy) are dynamically filtered out.
+
+# Arguments
+- `Re_all_paths`: A matrix `(sims × steps)` of `SVector`s representing excess returns.
+- `X_all_paths`: A matrix `(sims × steps)` of gross risk-free returns.
+- `Y_all_paths`: A matrix `(sims × steps)` of non-tradable income yields.
+- `times`: An iterable of time points corresponding to the decision steps.
+- `future_policies`: The nested vector of interpolated policy functions.
+- `asset_names`: A list of strings representing the asset names.
+- `W_init`: (Keyword) The initial wealth to start the forward simulation (defaults to 100.0).
+
+# Returns
+- A `Makie.Figure` object containing the generated plot.
+"""
 function plot_realized_weights(Re_all_paths, X_all_paths, Y_all_paths, times, future_policies, asset_names; W_init=100.0)
     sim, T_steps = size(X_all_paths)
     n_assets = length(asset_names)
@@ -114,6 +171,28 @@ function plot_realized_weights(Re_all_paths, X_all_paths, Y_all_paths, times, fu
     return fig
 end
 
+"""
+    plot_value_vs_utility(Re_all_paths, X_all_paths, Y_all_paths, solver_params, future_policies,
+        utility_struct; t_check=nothing)
+
+Serves as an economic validity check by plotting the forward-simulated expected utility
+(the Value function, ``J(W)``) against the theoretical terminal utility function ``U(W)``.
+
+If the solver is working correctly, the expected utility ``J(W)`` evaluated at ``T - 1`` should be
+equal to ``U(W)``, representing the value added by optimal dynamic trading.
+
+# Arguments
+- `Re_all_paths`: A matrix of `SVector`s representing excess returns.
+- `X_all_paths`: A matrix of gross risk-free returns.
+- `Y_all_paths`: A matrix of non-tradable income yields.
+- `solver_params`: The configuration parameters used to extract `W_grid`.
+- `future_policies`: The nested vector of interpolated policy functions.
+- `utility_struct`: The utility container.
+- `t_check`: (Keyword) The specific time step to evaluate. Defaults to `T-1`.
+
+# Returns
+- A `Makie.Figure` object containing the generated plot.
+"""
 function plot_value_vs_utility(Re_all_paths, X_all_paths, Y_all_paths, solver_params, future_policies, utility_struct; t_check=nothing)
     W_grid = solver_params.W_grid
     if isnothing(t_check)
@@ -144,6 +223,27 @@ function plot_value_vs_utility(Re_all_paths, X_all_paths, Y_all_paths, solver_pa
     return fig
 end
 
+
+"""
+    plot_policy_surface(future_policies, solver_params, t_idx, state_values::AbstractVector, state_name::String, asset_names)
+
+Generates a 3D surface plot visualizing the optimal portfolio weight as a joint function of
+both Wealth (``W``) and a specific state variable at decision time `t_idx`.
+
+This provides a comprehensive view of the agent's full policy rule, showing how
+intertemporal hedging demands (driven by the state variable) interact with risk aversion (driven by wealth).
+
+# Arguments
+- `future_policies`: The nested vector of interpolated policy functions.
+- `solver_params`: The configuration parameters used to extract `W_grid`.
+- `t_idx`: The decision time step to evaluate.
+- `state_values`: A vector containing the cross-sectional values of the state variable at `t_idx`.
+- `state_name`: A string label for the state variable used for the y-axis.
+- `asset_names`: A list of strings representing the asset names.
+
+# Returns
+- A `Makie.Figure` object containing the generated 3D surface plot.
+"""
 function plot_policy_surface(future_policies, solver_params, t_idx, state_values::AbstractVector, state_name::String, asset_names)
     W_grid = solver_params.W_grid
 

@@ -1,3 +1,23 @@
+"""
+    solve_2nd_order_policy(expected_moments_i, W_t, N_assets)
+
+Solves for the optimal portfolio weights using a 2nd-order Taylor expansion of the value function.
+
+By truncating at the second order, the First Order Conditions (FOCs) reduce to a standard system of
+linear equations.
+A dynamic regularization term (jitter) is automatically scaled and added to the diagonal of the
+covariance-like matrix `B_mat` to guarantee numerical stability and invertibility,
+especially when dealing with nearly perfectly correlated assets or zero-variance states.
+
+# Arguments
+- `expected_moments_i::Dict{Vector{Int}, Vector{Float64}}`: A dictionary mapping the cross-asset
+    monomial exponent vectors to their conditionally expected values for a specific simulation path.
+- `W_t::Float64`: The agent's specific wealth level at the current decision time.
+- `N_assets::Int`: The total number of tradable risky assets in the market.
+
+# Returns
+- `Vector{Float64}`: The optimal allocation weights for the risky assets.
+"""
 function solve_2nd_order_policy(
     expected_moments_i::Dict{Vector{Int}, Vector{Float64}},
     W_t::Float64,
@@ -21,6 +41,34 @@ function solve_2nd_order_policy(
     return -(1.0 / W_t) * (B_mat - jit) \ a_vec
 end
 
+
+"""
+    solve_higher_order_policy(expected_moments_i, W_t, N_assets, max_taylor_order)
+
+Solves for the optimal portfolio weights using an arbitrary `max_taylor_order` expansion of the FOC.
+
+If `max_taylor_order == 2`, it bypasses the non-linear solver entirely and efficiently returns the
+analytical linear solution via `solve_2nd_order_policy`.
+For orders strictly greater than 2, it dynamically generates the
+non-linear First Order Conditions (FOCs) using `multiexponents` and solves for the roots using
+`NonlinearSolve.jl`.
+
+The analytical 2nd-order solution is injected as the initial guess to ensure rapid and stable
+convergence of the non-linear solver.
+
+# Arguments
+- `expected_moments_i::Dict{Vector{Int}, Vector{Float64}}`: A dictionary mapping the cross-asset
+    monomial exponent vectors to their conditionally expected values for a specific simulation path.
+- `W_t::Float64`: The agent's specific wealth level at the current decision time.
+- `N_assets::Int`: The total number of tradable risky assets in the market.
+- `max_taylor_order::Int`: The highest degree of the Taylor expansion to compute
+    (e.g., 4 computes up to the 4th-order expansion).
+
+# Returns
+- `Vector{Float64}`: The optimal allocation weights for the risky assets.
+    If the non-linear solver fails to converge, the algorithm safely falls back to returning the
+    2nd-order analytical solution.
+"""
 function solve_higher_order_policy(
     expected_moments_i::Dict{Vector{Int}, Vector{Float64}},
     W_t::Float64,

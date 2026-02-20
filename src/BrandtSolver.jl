@@ -1,5 +1,6 @@
 module BrandtSolver
 
+using DocStringExtensions
 using LinearAlgebra
 using Statistics
 using StaticArrays
