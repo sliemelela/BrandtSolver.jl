@@ -33,7 +33,9 @@ It then advances wealth using the `calculate_next_wealth` physics kernel.
 
 # Returns
 - A tuple `(W_t_plus_1, W_T)`:
-  - `W_t_plus_1::Vector{Float64}`: Wealth at the immediate next time step (`t_start_idx + 1`). This is captured and returned because it acts as the base expansion point in the denominator of the Brandt Euler equation.
+  - `W_t_plus_1::Vector{Float64}`: Wealth at the immediate next time step (`t_start_idx + 1`).
+    This is captured and returned because it acts as the base expansion point in the denominator
+    of the Brandt equation.
   - `W_T::Vector{Float64}`: Terminal wealth at `T_end_idx`.
 """
 function simulate_wealth_trajectory(
