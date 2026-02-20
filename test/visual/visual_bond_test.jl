@@ -75,58 +75,60 @@ function setup_bond_market()
 end
 
 function setup_bond_market_merton_stock()
-    # 1. Interest Rate (Vasicek)
-    # Volatile enough to make the bond risky and hedging interesting.
-    # Mean 5%, Vol 2%, Speed 0.2
-    r_proc = VasicekProcess(:r, 0.2, 0.05, 0.02, 0.05, 1)
 
-    # 2. Stock (Merton-Style Drift)
-    # Target: dS/S = (r_t + λσ)dt + σdW
-    # Excess Return = (r_t + λσ) - r_t = λσ (Constant!)
-    # This isolates Hedging Demand from Speculative Demand.
-    σ_S = 0.20
-    risk_premium = 0.05
+    # Market Parameters
+    sims = 2000
+    T = 5.0
+    dt = 0.5
+    ρ_rS = -0.4
+    ρ = [ 1.0 ρ_rS;
+         ρ_rS  1.0]
 
-    # Note: We now pass r_val into the drift function
-    stock_drift(t, S, r_val) = S * (r_val + risk_premium)
+    # Market price of risk and factor loadings
+    ϕ_r, ϕ_S = 0.075, -0.2
+    mpr = [ϕ_r, ϕ_S]
+    λ_S = -ϕ_r * ρ_rS - ϕ_S
+    λ_r = -ϕ_r - ϕ_S * ρ_rS
+
+    # Interest rate process (Vasicek)
+    κ_r, θ_r, σ_r, r0 = 0.2, 0.05, 0.02, 0.05
+    idx_r_shock = 1
+    r_proc = VasicekProcess(:r, κ_r, θ_r, σ_r, r0, idx_r_shock)
+
+    # Stock process (dS/S = (r_t + λσ)dt + σdW)
+    σ_S = 0.2
+    S_0 = 100.0
+    idx_S_shock = 2
+    stock_drift(t, S, r_val) = S * (r_val + λ_S * σ_S)
     stock_diff(t, S, r_val)  = S * σ_S
+    stock_proc = GenericSDEProcess(:S, stock_drift, stock_diff, S_0, [idx_S_shock], [:r])
 
-    # IMPORTANT: We add [:r] to dependencies so the process reads the rate path
-    stock_proc = GenericSDEProcess(:S, stock_drift, stock_diff, 100.0, [2], [:r])
+    # Nominal Bond Process
+    bond_proc = NominalBondProcess(:P_N, r_proc, mpr)
 
-    # 3. Bond (Zero Coupon)
-    # Price depends on r. Returns will be volatile.
-    market_risk = [-0.2, -0.1]
-    bond_proc = NominalBondProcess(:P_N, r_proc, market_risk)
-
-    # 4. Excess Returns
+    # Excess Returns
     re_stock = ExcessReturnProcess(:Re_Stock, :S, :r)
     re_bond  = ExcessReturnProcess(:Re_Bond, :P_N, :r)
 
-    # 5. Config
-    # Correlation between Rate (1) and Stock (2)
-    ρ = [ 1.0 -0.4;
-         -0.4  1.0]
-
+    # Simulation of configuration
     config = MarketConfig(
-        sims = 2000,
-        T = 5.0,
-        M = 10,
+        sims = sims,
+        T = T,
+        dt = dt,
         processes = [r_proc, stock_proc, bond_proc, re_stock, re_bond],
         correlations = ρ
     )
-
     world = build_world(config)
 
-    # 6. Solver Params
+    # Solver Parameters
     params = SolverParams(
-        W_grid = [50.0, 100.0, 150.0, 200.0],
+        W_grid = [100.0, 150.0, 200.0],
         poly_order = 2,
         max_taylor_order = 4,
         trimming_α = 0.01,
     )
 
-    # 7. Utility
+    # Utility
     γ = 5.0
     crra(W) = (W^(1.0 - γ)) / (1.0 - γ)
     utility = create_utility_from_ad(crra)
@@ -140,7 +142,7 @@ end
     println("  > Running Solver...")
     world, params, utility = setup_bond_market_merton_stock()
 
-    asset_names = ["Re_Stock", "Re_Bond"]
+    asset_names = ["Re_Bond"]
     state_names = ["r"]
 
     # Extract matrices
@@ -153,11 +155,12 @@ end
 
     println("  > Generating Plots...")
 
-    fig1 = plot_policy_rules(policies, params, 1, asset_names; samples=20)
+    t_check = 10
+    fig1 = plot_policy_rules(policies, params, t_check, asset_names; samples=20)
     save(joinpath(OUTPUT_DIR, "bond_1_policy_vs_wealth.png"), fig1)
 
-    state_vals = world.paths.r[:, 1]
-    fig2 = plot_state_dependence(policies, params, 1, state_vals, "r", asset_names; fix_W=100.0)
+    state_vals = world.paths.r[:, t_check]
+    fig2 = plot_state_dependence(policies, params, t_check, state_vals, "r", asset_names; fix_W=100.0)
     save(joinpath(OUTPUT_DIR, "bond_2_policy_vs_rate.png"), fig2)
 
     times = range(0, world.config.T, length=world.config.M+1)[1:end-1]
@@ -167,7 +170,7 @@ end
     fig4 = plot_value_vs_utility(Re_all, X_all, Y_all, params, policies, utility; t_check=world.config.M)
     save(joinpath(OUTPUT_DIR, "bond_4_value_vs_utility.png"), fig4)
 
-    fig5 = plot_policy_surface(policies, params, 1, state_vals, "r", asset_names)
+    fig5 = plot_policy_surface(policies, params, t_check, state_vals, "r", asset_names)
     save(joinpath(OUTPUT_DIR, "bond_5_policy_surface.png"), fig5)
 
     println("--- Visual Bond Test Complete ---")
