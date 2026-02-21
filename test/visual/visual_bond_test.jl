@@ -155,7 +155,7 @@ end
 
     println("  > Generating Plots...")
 
-    t_check = 10
+    t_check = 9
     fig1 = plot_policy_rules(policies, params, t_check, asset_names; samples=20)
     save(joinpath(OUTPUT_DIR, "bond_1_policy_vs_wealth.png"), fig1)
 
