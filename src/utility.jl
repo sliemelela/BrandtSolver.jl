@@ -1,3 +1,23 @@
+"""
+    create_utility_from_ad(base_utility_func::Function)
+
+Wraps a user-provided base utility function into a [`UtilityFunctions`](@ref) struct,
+automatically generating its exact higher-order derivatives and an inverse function.
+
+# Details
+- **Derivatives:** Uses `ForwardDiff.derivative` recursively to compute any ``n``-th order derivative.
+    Results are aggressively cached in a closure dictionary so that re-evaluating the same
+    derivative order carries zero compilation or setup overhead.
+- **Inverse:** Generates an inverse utility function ``W = U^{-1}(J)`` using Newton's method
+    (`Roots.find_zero`), relying on the automatically computed first derivative for fast convergence.
+
+# Arguments
+- `base_utility_func::Function`: A standard scalar function representing utility,
+    e.g., ``W \\mapsto \\frac{W^{1-γ}}{1-γ}``
+
+# Returns
+- A populated `UtilityFunctions` struct.
+"""
 function create_utility_from_ad(base_utility_func::Function)
 
     # 1. Initialize the Cache
@@ -33,7 +53,7 @@ function create_utility_from_ad(base_utility_func::Function)
     function inverse_utility(target_val)
         f(W) = base_utility_func(W) - target_val
         W_initial_guess = 1.0
-        # Uses the cached u_prime
+        # Uses the cached derivative for the first derivative of the base utility
         W_solution = find_zero((f, deriv_cache[1]), W_initial_guess, Roots.Newton())
         return W_solution
     end
@@ -47,10 +67,15 @@ function create_utility_from_ad(base_utility_func::Function)
 end
 
 """
-    calculate_next_wealth(W_current, ω_t, Re_next, R_free)
+     calculate_next_wealth(W_current, ω_t, Re_next, R_free)
 
-Core physics kernel: W_{t+1} = W_t * (ω_t ⋅ Re_{t+1} + R_{free})
-Works for both scalars (one simulation) and vectors (all simulations).
+The core physics kernel that advances wealth...
+
+# Arguments
+- `W_current`: The wealth at time ``t``.
+- `ω_t`: The chosen portfolio weight(s) for the risky assets at time ``t``.
+- `Re_next`: The realized excess return(s) of the risky assets at time ``t+1``.
+- `R_free`: The gross risk-free return between ``t`` and ``t+1``.
 """
 function calculate_next_wealth(W_current, ω_t, Re_next, R_free)
 

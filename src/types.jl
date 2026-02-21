@@ -1,10 +1,21 @@
 # -- Aliases for dimensions
-const SimVec      = Vector{Float64}   # Size: (sim,)
-const AssetVec    = Vector{Float64}   # Size: (N,), where where N is amount of assets.
-const SimTimeMat  = Matrix{Float64}   # Size: (sim x Time)
-const SimAssetMat = Matrix{Float64}   # Size: (sim x N), where where N is amount of assets.
-const AssetSV     = SVector           # Size: (N,), where N is amount of assets.
-const SimTimeSV   = Matrix{<:AssetSV} # Size: (Sims x Time) of AssetSV vectors each entry
+"Vector of size `(sim,)` representing values across simulations."
+const SimVec      = Vector{Float64}
+
+"Vector of size `(N,)` representing values across `N` assets."
+const AssetVec    = Vector{Float64}
+
+"Matrix of size `(sim x Time)` representing scalar values over time for each simulation."
+const SimTimeMat  = Matrix{Float64}
+
+"Matrix of size `(sim x N)` representing asset values for each simulation."
+const SimAssetMat = Matrix{Float64}
+
+"Static Vector of size `(N,)` representing `N` assets."
+const AssetSV     = SVector
+
+"Matrix of size `(Sims x Time)` where each entry is an `AssetSV`."
+const SimTimeSV   = Matrix{<:AssetSV}
 
 """
 Abstract parent type for all regression strategies.
@@ -20,25 +31,49 @@ struct StandardOLS <: RegressionStrategy end
 """
 Trimmed OLS (robust to outliers).
 Removes the top and bottom α probability mass before regressing.
+
+# Arguments
+$(TYPEDFIELDS)
 """
 struct TrimmedOLS <: RegressionStrategy
+    "The fraction of data to trim from both tails (e.g., 0.05 for 5% trimming)."
     α::Float64
 end
 
+"""
+    $(TYPEDEF)
+Configuration parameters for the Brandt portfolio solver.
+
+# Arguments
+$(TYPEDFIELDS)
+"""
 Base.@kwdef struct SolverParams
+    "Grid of wealth values at initial time t=0 used to evaluate and interpolate the policy function."
     W_grid::Vector{Float64}
+    "Order of the polynomial used for expanding state variables in the cross-sectional regression."
     poly_order::Int
+    "The truncation order for the Taylor expansion of the value function."
     max_taylor_order::Int
+    "The α value used if a trimmed regression strategy is applied."
     trimming_α::Float64
 end
 
 """
-A container for the utility function's derivatives.
-(This struct is created by `utils.jl`, not loaded)
+    $(TYPEDEF)
+A container for the utility function, its derivatives, and its inverse.
+
+# Arguments
+$(TYPEDFIELDS)
+
+Typically, you do not construct this manually. Instead, use [`create_utility_from_ad`](@ref)
+to generate it automatically from a base utility function.
 """
 Base.@kwdef struct UtilityFunctions
+    "The base utility function `U(W)`."
     u::Function
+    "A function `f(n)` that returns a function for the `n`-th derivative of `U(W)`."
     nth_derivative::Function
+    "The inverse utility function, used to calculate Certainty Equivalents."
     inverse::Function
 end
 
