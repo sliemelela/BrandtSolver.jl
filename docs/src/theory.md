@@ -16,7 +16,7 @@ Formally the investor's problem at timestep $n$ is
 ```
 subject to the sequence of budget constraints
 ```math
-    W_{m + 1} = W_s (\omega_s^\top R^e_{m + 1} + R_{m + 1})
+    W_{m + 1} = W_m (\omega_s^\top R^e_{m + 1} + R_{m + 1})
 ```
 for all $s \geq n$.
 Here $R^e_{m + 1}$ can be interpreted as the excess return of the risky assets over the risk-ree
@@ -45,7 +45,7 @@ $\omega_m^{\star}$ is the vector of optimal portfolio weights at timestep $m$.
 Furthermore, let us assume that the current timestep is denoted by $n$ and let us also define
 ```math
     \hat W_{M + 1} = W_n R_{n + 1}
-        \prod_{m = n + 1}^{M} ((\omega_s^{\star})^\top R^e_{m + 1} + R_{s + 1}).
+        \prod_{m = n + 1}^{M} ((\omega_m^{\star})^\top R^e_{m + 1} + R_{s + 1}).
 ```
 
 ### Result
@@ -63,9 +63,9 @@ $k$
       \prod_{i=1}^N (R^i_{n + 1})^{k_i} R^e_{n+1}\right]\Biggr) = 0,
 \end{aligned}
 ```
-where $\binom{n}{k_1,\ldots, k_N}$ is the multinomial given by
+where $\binom{p}{k_1,\ldots, k_N}$ is the multinomial given by
 ```math
-  \binom{n}{k_1,\ldots, k_N} = \frac{n!}{k_1 ! k_2 ! \cdots k_N !}.
+  \binom{p}{k_1,\ldots, k_N} = \frac{p!}{k_1 ! k_2 ! \cdots k_N !}.
 ```
 
 Given this result, the pragmatic reader may come up with some reasonable questions:
@@ -110,7 +110,7 @@ We see that
 ```math
 \begin{aligned}
     V_n(W_n, Z_n)
-    &= \max_{\{\omega_m\}_{m = n}^{M}} \mathbb{E}_n\left[ u(W_n) \right]\\
+    &= \max_{\{\omega_m\}_{m = n}^{M}} \mathbb{E}_n\left[ u(W_{M + 1}) \right]\\
     &= \max_{\omega_n} \max_{\{\omega_m\}_{m = n + 1}^{M}} \mathbb{E}_n\left[ u(W_{M + 1}) \right] \\
     &= \max_{\omega_n} \max_{\{\omega_m\}_{m = n + 1}^{M}}
         \mathbb{E}_n\left[  \mathbb{E}_{n + 1}\left[ u(W_{M + 1}) \right] \right] \\
@@ -128,17 +128,112 @@ $\{\omega_m\}_{m = n + 1}^{M}$ is independent of the choice of $\omega_n$ and ca
 And the last equality follows from the definition of the value function at time $t + 1$.
 
 ### Taylor expanding the value function
-Let us assume that the value function $V$ is $C^(k + 1)$ in the first argument for $k >= 2$.
-Then the value function in @value-function satisfies
+Let us assume that the value function $V$ is $C^(k + 1)$ in the first argument for $k \geq 2$.
+Then the value function (using the Bellman equation) satisfies
 ```math
-  V_t(W_t, Z_t)
-  = \max_{omega_t} \sum_{n = 0}^{k}
-    W_t^n/n!  &\mathbb{E}_t [partial_1^n V_(t + 1)(W_t R_(t + 1), Z_(t + 1)) (omega_t^top R^e_(t + 1))^n ]\
-    + W_t^(k+1)/(k+1)! &EE_t [partial_1^(k + 1) V_(t + 1)(xi, Z_(t + 1)) (omega_t^top R^e_(t + 1))^(k + 1) ]
+\begin{aligned}
+    V_n(W_n, Z_n)
+    &= \max_{\omega_n} \Biggl\{ \sum_{r = 0}^{k} \frac{W_n^r}{r!} \mathbb{E}_n \left[ \partial_1^r V_{n+1}(W_n R_{n+1}, Z_{n+1}) (\omega_n^\top R^e_{n+1})^r \right] \\
+    &+ \frac{W_n^{k+1}}{(k+1)!} \mathbb{E}_n \left[ \partial_1^{k+1} V_{n+1}(\xi, Z_{n+1}) (\omega_n^\top R^e_{n+1})^{k+1} \right]
+    \Biggr\}
+\end{aligned}
 ```
-for some $xi$ between $W_t R_(t + 1)$ and $W_t (omega_t^top R^e_(t + 1) + R_(t + 1))$.
+for some $\xi$ between $W_n R_{n + 1}$ and $W_n (\omega_n^\top R^e_{n + 1} + R_{n + 1})$.
 Here we assume that all moments exist and are finite.
 
+#### Proof
+Let us consider the mapping $f(x) = V_{n + 1} (x, Z_{n + 1})$ for fixed $n$ and $Z_{n + 1}$.
+Using Taylor's theorem, we have that
+```math
+    f(x) = \sum_{r = 0}^k \frac{1}{r!} f^{(r)}(x_0)(x - x_0)^r + \frac{f^{(k + 1)}(\xi)}{(k+1)!}(x - x_0)^{k + 1}
+```
+for some $\xi$ between $x$ and $x_0$.
+Taking $x_0 = W_n R_{n + 1}$ and $x = W_{n + 1}$, and noting that
+$W_{n + 1} - W_n R_{n + 1} = W_n \omega_n^\top R^e_{n + 1}$ by the budget constraint,
+the result follows.
+
+### Finding the first order conditions
+The next is to solve the static maximization problem in the Taylor expansion.
+The next proposition provides the final equation for this.
+
+Let $\omega_n = (\omega_n^1, \dots, \omega_n^N)$ be the components of the portfolio weights at time $n$.
+Similarly, write $R^e_{n+1} = (R_{n+1}^{e,1}, \dots, R_{n+1}^{e,N})$.
+The first order conditions (FOC) are given by:
+```math
+   \sum_{r = 1}^{k} \frac{W_n^{r - 1}}{(r - 1)!} \mathbb{E}_n \left[ \partial_1^r V_{n + 1}(W_n R_{n + 1}, Z_{n + 1}) (\omega_n^\top R^e_{n + 1})^{r - 1} R^e_{n + 1} \right] + \frac{W_n^k}{k!} \mathbb{E}_n \left[ \partial_1^{k + 1} V_{n + 1}(\xi, Z_{n + 1}) (\omega_n^\top R^e_{n + 1})^{k} R^e_{n + 1} \right] = 0
+```
+or alternatively:
+```math
+\begin{aligned}
+   \sum_{r = 1}^{k} \frac{W_n^{r - 1}}{(r - 1)!}  &\Biggl(\sum_{k_1 + \dots + k_N = r - 1} \binom{r - 1}{k_1, \dots, k_N} \prod_{i=1}^N (\omega_n^i)^{k_i} \times \\
+   &\mathbb{E}_n \left[ \partial_1^r V_{n + 1}(W_n R_{n + 1}, Z_{n + 1}) \prod_{i=1}^N (R^{e, i}_{n + 1})^{k_i} R^e_{n+1} \right]\Biggr) \\
+    &+ \frac{W_n^k}{k!} \mathbb{E}_n \left[ \partial_1^{k + 1} V_{n + 1}(\xi, Z_{n + 1}) (\omega_n^\top R^e_{n + 1})^{k} R^e_{n + 1} \right] = 0.
+\end{aligned}
+```
+
+#### Proof
+To derive the FOC, we take the static maximization problem from the Taylor expansion,
+take the derivative with respect to $\omega_n$, and set it to $0$.
+After this, we divide both sides by $W_n$. This yields the first result.
+
+We now note that for arbitrary $r \in \mathbb{N}$, it holds by the multinomial theorem that:
+```math
+(\omega_n^\top R^e_{n + 1})^{r-1} = \sum_{k_1 + \dots + k_N = r-1}
+    \binom{r-1}{k_1, \dots, k_N} \prod_{i=1}^N (\omega_n^i R^{e, i}_{n + 1})^{k_i}
+```
+where $\binom{p}{k_1, \dots, k_N}$ is the multinomial coefficient.
+Using this identity and the linearity of the expectation, we find the second result.
+
+### Finding an alternative way of writing the value function
+The last problem we ought to solve is the problem of having no expression for the derivatives of the
+value function $\partial^r_1 V_{n + 1}(W_n R_{n+1}, Z_{n + 1})$. To that end, we note the following lemma.
+
+Let $\{\omega^\star_m\}_{m = n + 1}^{M}$ be the optimal sequence of portfolio weights at times $m = n + 1, \dots, M$,
+and denote:
+```math
+\hat{W}_{M+1} = W_n R_{n + 1} \prod_{m = n+1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1}).
+```
+Then:
+```math
+\partial^{r}_1 V_{n + 1}(W_n R_{n + 1}, Z_{n + 1}) = \mathbb{E}_{n + 1} \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1})^r \right].
+```
+
+
+#### Proof
+Using the definition of the value function and assuming $\{\omega^\star_m\}$ is the optimal sequence, we have:
+```math
+    V_{n + 1}(x, Z_{n + 1}) = \mathbb{E}_{n + 1} \left[ u \left( x \prod_{m = n+1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1}) \right) \right].
+```
+Differentiating $r$ times with respect to $x$ inside the expectation yields the result.
+Taking $x = W_n R_{n + 1}$ completes the proof.
+
+
+
+### Final result
+Using this, we can now reformulate the FOC.
+
+The first order conditions (FOC) are given by:
+```math
+\begin{aligned}
+   \sum_{r = 1}^{k} \frac{W_n^{r - 1}}{(r - 1)!}  &\Biggl(\sum_{k_1 + \dots + k_N = r - 1} \binom{r - 1}{k_1, \dots, k_N} \prod_{i=1}^N (\omega_n^i)^{k_i} \times \\
+   &\mathbb{E}_n \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1})^r \prod_{i=1}^N (R^{e, i}_{n + 1})^{k_i} R^e_{n+1} \right]\Biggr) \\
+    &+ \text{Remainder} = 0.
+\end{aligned}
+```
+
+### Implementation concerns
+In most polynomial solvers, it is necessary to provide an initial guess.
+To that end, we consider the $2$-nd order expansion ($k=2$), which yields the linear FOC:
+```math
+  a_n + B_n \omega_n = 0 \implies \omega_n = -B_n^{-1} a_n
+```
+where $a_n$ is a vector and $B_n$ is a matrix with columns $b_{i, n}$ given by
+```math
+\begin{aligned}
+  a_{n} &= \mathbb{E}_n \left[ u'(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1}) R^e_{n+1} \right], \\
+  b_{i, n} &= \mathbb{E}_n \left[ u''(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1})^2 R^{e, i}_{n + 1} R^e_{n+1} \right].
+\end{aligned}
+```
 
 
 
