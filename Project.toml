@@ -16,6 +16,7 @@ NonlinearSolve = "8913a72c-1f9b-4ce2-8d82-65094dcecaec"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 
 [sources]
 FinancialMarketSimulation = {rev = "main", url = "https://github.com/sliemelela/FinancialMarketSimulation.jl"}
@@ -41,7 +42,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 FinancialMarketSimulation = "873f78ff-6396-4785-a014-dd5df8284ed2"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+
 
 [targets]
-test = ["Test", "Printf", "Random", "FinancialMarketSimulation", "DocStringExtensions"]
+test = ["Test", "Printf", "Random", "FinancialMarketSimulation"]
