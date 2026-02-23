@@ -24,6 +24,7 @@ makedocs(;
     checkdocs = :exports,
     pages=[
         "Home" => "index.md",
+        "Theory (Background)" => "theory.md",
         "Tutorial" => "tutorial.md",
         "Internal Architecture" => "architecture.md",
         "API Reference" => "api.md",
