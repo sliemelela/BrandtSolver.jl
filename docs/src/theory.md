@@ -25,6 +25,7 @@ $W_m$.
 Furthermore, $\{\omega_s\}_{s=n}^{M}$ is the sequence of portfolio weights chosen at times
 $m = n, \ldots, M$ and $u$ is the investor's utility function.
 The process $Z_n$ is a vector of state variables that are relevant for the investor's decision making.
+Lastly, the function $u$ denotes the utility function of the investor.
 The goal of this package is to find $\{\omega_s\}_{s=1}^{M}$
 
 ## Solution of the algorithm
@@ -83,7 +84,65 @@ The short and concise answers are:
 If the above does not make sense, do not fret.
 This will soon all make sense once we treat the derivation of the above.
 
-##
+## Deriving the solution: so, how do we get there?
+The (rough) outline of the derivation is as follows:
+1. We prove the value function satisfies the Bellman equation
+```math
+V_n(W_n, Z_n) = \max_{\omega_n} \mathbb{E}_n[V_{n + 1}(W_{n + 1}, Z_{n + 1})]
+```
+2. We derive the Taylor expansion the value function $V_{n + 1}$ in the conditional expectation.
+    This gives a new expression for $V_n$.
+    _Note_: This is where the $k$ came from in the [solution](#result).
+3. Using the new expression for $V_n$ we derive the first order conditions of finding the optimal
+    $\omega_n$.
+4. We manipulate the first order conditions so that all unknown quantities are replaced by
+    known quantities.
+
+### The Bellman equation
+The value function satisfies the Bellman equation
+```math
+  V_n(W_n, Z_n) = \max_{\omega_n} \mathbb{E}_n[V_{n + 1}(W_{n + 1}, Z_{n + 1})]
+```
+with terminal condition $V_{M + 1} (W_{M + 1}, Z_{M + 1}) = u(W_{M + 1})$.
+
+#### Proof
+We see that
+```math
+\begin{aligned}
+    V_n(W_n, Z_n)
+    &= \max_{\{\omega_m\}_{m = n}^{M}} \mathbb{E}_n\left[ u(W_n) \right]\\
+    &= \max_{\omega_n} \max_{\{\omega_m\}_{m = n + 1}^{M}} \mathbb{E}_n\left[ u(W_{M + 1}) \right] \\
+    &= \max_{\omega_n} \max_{\{\omega_m\}_{m = n + 1}^{M}}
+        \mathbb{E}_n\left[  \mathbb{E}_{n + 1}\left[ u(W_{M + 1}) \right] \right] \\
+    &= \max_{\omega_n} \mathbb{E}_n\left[ \max_{\{\omega_m\}_{m = n + 1}^{M}}
+        \mathbb{E}_{n + 1}\left[ u(W_{M + 1}) \right] \right] \\
+    &= \max_{\omega_n} \mathbb{E}_n\left[ V_{n + 1}(W_{n + 1}, Z_{n + 1}) \right].
+\end{aligned}
+```
+The first equality follows from the definition of the value function.
+The second equality follows from separating the maximization over $\omega_t$ and the remaining
+maximization over $\{\omega_m\}_{m = n + 1}^{M}$.
+The third equality follows from the law of iterated expectations.
+The fourth equality follows from the fact that the maximization over
+$\{\omega_m\}_{m = n + 1}^{M}$ is independent of the choice of $\omega_n$ and can thus be moved inside the expectation.
+And the last equality follows from the definition of the value function at time $t + 1$.
+
+### Taylor expanding the value function
+Let us assume that the value function $V$ is $C^(k + 1)$ in the first argument for $k >= 2$.
+Then the value function in @value-function satisfies
+```math
+  V_t(W_t, Z_t)
+  = \max_{omega_t} \sum_{n = 0}^{k}
+    W_t^n/n!  &\mathbb{E}_t [partial_1^n V_(t + 1)(W_t R_(t + 1), Z_(t + 1)) (omega_t^top R^e_(t + 1))^n ]\
+    + W_t^(k+1)/(k+1)! &EE_t [partial_1^(k + 1) V_(t + 1)(xi, Z_(t + 1)) (omega_t^top R^e_(t + 1))^(k + 1) ]
+```
+for some $xi$ between $W_t R_(t + 1)$ and $W_t (omega_t^top R^e_(t + 1) + R_(t + 1))$.
+Here we assume that all moments exist and are finite.
+
+
+
+
+
 
 
 
