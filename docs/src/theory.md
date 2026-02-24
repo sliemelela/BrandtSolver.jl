@@ -5,6 +5,32 @@ most implementations are limited to a second-order (mean-variance) approximation
 This package extends that logic by providing the generalized expressions and implementation for a Taylor expansion of any order $k$.
 By deriving the multinomial expansion of the budget constraint and the associated high-order derivatives of the value function, this tool allows for greater precision in capturing non-normalities and higher-order moments in asset returns.
 
+
+## Goal of the algorithm
+In this package we are treating a terminal wealth optimization problem.
+More specifically, in this package we consider portfolio choice problems at timesteps
+$n = 1, 2, \ldots, M$, where $M + 1$ is some terminal timestep.
+This portfolio choice problem at timestep $n$ is defined by an investor who maximizes the expected utility
+of their wealth at the terminal timestep $M + 1$ by trading $N$ risky assets and a risk-free asset (cash).
+Formally the investor's problem at timestep $n$ is
+```math
+    V_n(W_n, Z_n)
+    = \max_{\{\omega_s\}_{m = n}^{M}} \mathbb{E}_n[u(W_{M + 1})]
+```
+subject to the sequence of budget constraints
+```math
+    W_{m + 1} = W_m (\omega_m^\top R^e_{m + 1} + R_{m + 1})
+```
+for all $m \geq n$.
+Here $R^e_{m + 1}$ can be interpreted as the excess return of the risky assets over the risk-ree
+asset, and $R_{m + 1}$ is the gross return of other processes that _may_ depend on wealth
+$W_m$.
+Furthermore, $\{\omega_s\}_{m=n}^{M}$ is the sequence of portfolio weights chosen at times
+$m = n, \ldots, M$ and $u$ is the investor's utility function.
+The process $Z_n$ is a vector of state variables that are relevant for the investor's decision making.
+Lastly, the function $u$ denotes the utility function of the investor.
+The goal of this package is to find $\{\omega_m\}_{m=1}^{M}$.
+
 ### Extension: Wealth-Dependent Returns
 A key feature of this implementation is that the gross return $R_{m+1}$ is not restricted to be exogenous.
 We allow $R_{m+1}$ to depend on the current level of wealth $W_m$ through the following structure:
@@ -30,33 +56,9 @@ By setting $X_n = R^f_n$ and $Y_n = p O_n$,
 this matches our budget constraint $W_{n+1} = W_n (\omega_n^\top R^e_{n+1} + R_{n+1})$.
 
 
-## Goal of the algorithm
-In this package we are treating a terminal wealth optimization problem.
-More specifically, in this package we consider portfolio choice problems at timesteps
-$n = 1, 2, \ldots, M$, where $M + 1$ is some terminal timestep.
-This portfolio choice problem at timestep $n$ is defined by an investor who maximizes the expected utility
-of their wealth at the terminal date $M$ by trading $N$ risky assets and a risk-free asset (cash).
-Formally the investor's problem at timestep $n$ is
-```math
-    V_n(W_n, Z_n)
-    = \max_{\{\omega_s\}_{m = n}^{M- 1}} \mathbb{E}_n[u(W_M)]
-```
-subject to the sequence of budget constraints
-```math
-    W_{m + 1} = W_m (\omega_m^\top R^e_{m + 1} + R_{m + 1})
-```
-for all $m \geq n$.
-Here $R^e_{m + 1}$ can be interpreted as the excess return of the risky assets over the risk-ree
-asset, and $R_{m + 1}$ is the gross return of other processes that _may_ depend on wealth
-$W_m$.
-Furthermore, $\{\omega_s\}_{m=n}^{M}$ is the sequence of portfolio weights chosen at times
-$m = n, \ldots, M$ and $u$ is the investor's utility function.
-The process $Z_n$ is a vector of state variables that are relevant for the investor's decision making.
-Lastly, the function $u$ denotes the utility function of the investor.
-The goal of this package is to find $\{\omega_m\}_{m=1}^{M}$
 
 ## Solution of the algorithm
-The goal of this section is to give the final solution of the algorithm.
+The goal of this section is to give the final solution needed to set up the algorithm.
 We acknowledge that the result can look quite daunting and so it is not the expectation that the
 reader can immediately make sense of why the solution looks like it does.
 Despite this, it can help to first see where we are working towards before explaining how it is
@@ -155,7 +157,7 @@ $\{\omega_m\}_{m = n + 1}^{M}$ is independent of the choice of $\omega_n$ and ca
 And the last equality follows from the definition of the value function at time $t + 1$.
 
 ### Taylor expanding the value function
-Let us assume that the value function $V$ is $C^(k + 1)$ in the first argument for $k \geq 2$.
+Let us assume that the value function $V$ is $C^{k + 1}$ in the first argument for $k \geq 2$.
 Then the value function (using the Bellman equation) satisfies
 ```math
 \begin{aligned}
@@ -216,11 +218,11 @@ The last problem we ought to solve is the problem of having no expression for th
 value function $\partial^r_1 V_{n + 1}(W_n R_{n+1}, Z_{n + 1})$. To that end, we note the following lemma.
 
 Let $\{\omega^\star_m\}_{m = n + 1}^{M}$ be the optimal sequence of portfolio weights at times $m = n + 1, \dots, M$,
-and denote:
+and denote
 ```math
 \hat{W}_{M+1} = W_n R_{n + 1} \prod_{m = n+1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1}).
 ```
-Then:
+Then
 ```math
 \partial^{r}_1 V_{n + 1}(W_n R_{n + 1}, Z_{n + 1})
 = \mathbb{E}_{n + 1} \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_m)^r \right].
@@ -247,13 +249,13 @@ we can write
     + \sum_{m = n + 1}^{M} Y_{m} \left(\prod_{p = m + 1}^{M} G_{p + 1}\right)
 ```
 where $n < M$ is some arbitrary timestep.
-For the critical reader, the proof of this can be done by induction is supplied in the appendix below.
+The critical reader might demand a proof of this. This can be found in the appendix.
 Using this, we now note that
 ```math
-\frac{\partial W_{M + 1}}{W_{n + 1}} =  \prod_{m = n + 1}^{M} G_{m + 1}.
+\frac{\partial W_{M + 1}}{\partial W_{n + 1}} =  \prod_{m = n + 1}^{M} G_{m + 1}.
 ```
 
-Using the definition of the value function and assuming $\{\omega^\star_m\}$ is the optimal sequence, we have:
+Using the definition of the value function and assuming $\{\omega^\star_m\}$ is the optimal sequence, we have
 ```math
     V_{n + 1}(x, Z_{n + 1})
         = \mathbb{E}_{n + 1} \left[ u \left( W_{M + 1}\right) \right],
