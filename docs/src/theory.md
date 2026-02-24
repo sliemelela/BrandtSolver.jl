@@ -1,8 +1,7 @@
 # Theory
 To understand how the package works, we treat the algorithm proposed by [Brandt_etal_2005](@cite) as our foundation.
 While the original authors introduced the use of Taylor expansions to approximate the value function, most standard implementations are limited to a restrictive second-order (mean-variance) approximation, and they assume that wealth transitions are purely multiplicative.This package extends the foundational Brandt logic in two major ways:
-- **Generalized High-Order Expansions**: It provides the exact
-mathematical expressions and algorithmic implementation for a Taylor expansion of any arbitrary order $k$. By deriving the multinomial expansion of the budget constraint and the associated high-order derivatives of the value function, this tool allows for extreme precision when capturing non-normalities (skewness, kurtosis) and higher-order moments in asset returns.
+- **Generalized High-Order Expansions**: It provides the exact mathematical expressions and algorithmic implementation for a Taylor expansion of any arbitrary order $k$. By deriving the multinomial expansion of the budget constraint and the associated high-order derivatives of the value function, this tool allows for extreme precision when capturing non-normalities (skewness, kurtosis) and higher-order moments in asset returns.
 - **Wealth-Dependent Returns (Exogenous Cash Flows)**: It breaks the standard assumption of wealth independence in parts of the budget constraint by natively supporting affine wealth transitions. This allows the algorithm to seamlessly incorporate non-tradeable income, labor income, or fixed consumption costs across time.
 
 ## Goal of the algorithm
