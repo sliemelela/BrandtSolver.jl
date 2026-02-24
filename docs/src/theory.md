@@ -1,9 +1,9 @@
 # Theory
 To understand how the package works, we treat the algorithm proposed by [Brandt_etal_2005](@cite) as our foundation.
-While the original authors suggest the use of Taylor expansions to approximate the value function,
-most implementations are limited to a second-order (mean-variance) approximation.
-This package extends that logic by providing the generalized expressions and implementation for a Taylor expansion of any order $k$.
-By deriving the multinomial expansion of the budget constraint and the associated high-order derivatives of the value function, this tool allows for greater precision in capturing non-normalities and higher-order moments in asset returns.
+While the original authors introduced the use of Taylor expansions to approximate the value function, most standard implementations are limited to a restrictive second-order (mean-variance) approximation, and they assume that wealth transitions are purely multiplicative.This package extends the foundational Brandt logic in two major ways:
+- **Generalized High-Order Expansions**: It provides the exact
+mathematical expressions and algorithmic implementation for a Taylor expansion of any arbitrary order $k$. By deriving the multinomial expansion of the budget constraint and the associated high-order derivatives of the value function, this tool allows for extreme precision when capturing non-normalities (skewness, kurtosis) and higher-order moments in asset returns.
+- **Wealth-Dependent Returns (Exogenous Cash Flows)**: It breaks the standard assumption of wealth independence in parts of the budget constraint by natively supporting affine wealth transitions. This allows the algorithm to seamlessly incorporate non-tradeable income, labor income, or fixed consumption costs across time.
 
 ## Goal of the algorithm
 In this package we are treating a terminal wealth optimization problem.
@@ -21,13 +21,12 @@ subject to the sequence of budget constraints
     W_{m + 1} = W_m (\omega_m^\top R^e_{m + 1} + R_{m + 1})
 ```
 for all $m \geq n$.
-Here $R^e_{m + 1}$ can be interpreted as the excess return of the risky assets over the risk-ree
+Here $R^e_{m + 1}$ can be interpreted as the excess return of the risky assets over the risk-free
 asset, and $R_{m + 1}$ is the gross return of other processes that _may_ depend on wealth
 $W_m$.
 Furthermore, $\{\omega_s\}_{m=n}^{M}$ is the sequence of portfolio weights chosen at times
 $m = n, \ldots, M$ and $u$ is the investor's utility function.
 The process $Z_n$ is a vector of state variables that are relevant for the investor's decision making.
-Lastly, the function $u$ denotes the utility function of the investor.
 The goal of this package is to find $\{\omega_m\}_{m=1}^{M}$.
 
 ### Extension: Wealth-Dependent Returns
@@ -81,11 +80,11 @@ portfolio weights $\omega_n^\star$ is the limit of the solutions of the equation
 $k$
 ```math
 \begin{aligned}
-    \sum_{r = 1}^{k} \frac{W_t^{r - 1}}{(r - 1)!}  &\Biggl(\sum_{k_1 + \ldots + k_N = r - 1}
+    \sum_{r = 1}^{k} \frac{W_n^{r - 1}}{(r - 1)!}  &\Biggl(\sum_{k_1 + \ldots + k_N = r - 1}
     \binom{r - 1}{k_1, \ldots, k_N} \prod_{i=1}^N (\omega_n^i)^{k_i} \times \\
    &\mathbb{E}_n \left[\partial^{r} u(\hat W_{M + 1})
       \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_{m})^r
-      \prod_{i=1}^N (R^i_{n + 1})^{k_i} R^e_{n+1}\right]\Biggr) = 0,
+      \prod_{i=1}^N (R^{e,i}_{n + 1})^{k_i} R^e_{n+1}\right]\Biggr) = 0,
 \end{aligned}
 ```
 where $\binom{p}{k_1,\ldots, k_N}$ is the multinomial given by
@@ -145,7 +144,7 @@ We see that
 \end{aligned}
 ```
 The first equality follows from the definition of the value function.
-The second equality follows from separating the maximization over $\omega_t$ and the remaining
+The second equality follows from separating the maximization over $\omega_n$ and the remaining
 maximization over $\{\omega_m\}_{m = n + 1}^{M}$.
 The third equality follows from the law of iterated expectations.
 The fourth equality follows from the fact that the maximization over
@@ -281,7 +280,7 @@ The first order conditions (FOC) are given by:
 ```math
 \begin{aligned}
    \sum_{r = 1}^{k} \frac{W_n^{r - 1}}{(r - 1)!}  &\Biggl(\sum_{k_1 + \dots + k_N = r - 1} \binom{r - 1}{k_1, \dots, k_N} \prod_{i=1}^N (\omega_n^i)^{k_i} \times \\
-   &\mathbb{E}_n \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_{m + 1})^r \prod_{i=1}^N (R^{e, i}_{n + 1})^{k_i} R^e_{n+1} \right]\Biggr) \\
+   &\mathbb{E}_n \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_{m})^r \prod_{i=1}^N (R^{e, i}_{n + 1})^{k_i} R^e_{n+1} \right]\Biggr) \\
     &+ \text{Remainder} = 0.
 \end{aligned}
 ```
@@ -354,7 +353,7 @@ Solves the system using a pre-computed QR factorization of $\Phi$. This is highl
 
 ##### $\alpha$-Trimmed OLS:
 To prevent extreme wealth paths (outliers) from dominating the regression, this strategy identifies the "body" of the distribution. It calculates the indices $k_{low} = \lfloor \alpha S \rfloor + 1$ and $k_{high} = \lceil (1-\alpha)S \rceil$, sorts the vector $\mathcal{Y}_{n + 1}$, and performs the regression using only the rows of $\Phi$ and elements of $\mathcal{Y}_{n + 1}$ corresponding to the sorted indices between $k_{low}$ and $k_{high}$.
-This "brute force" stabilization method involves: Sorting the realized $\mathcal{Y}_{n+1}$ across all paths. Discarding the extreme $\alpha\%$ tails (e.g., the top and bottom 1%) to remove the influence of outliers.Running the OLS regression on the remaining data to estimate the coefficients $\theta_n$.
+This "brute force" stabilization method involves: Sorting the realized $\mathcal{Y}_{n+1}$ across all paths. Discarding the extreme $\alpha\%$ tails (e.g., the top and bottom 1%) to remove the influence of outliers. Running the OLS regression on the remaining data to estimate the coefficients $\theta_n$.
 
 ### Numerical Optimization
 Finally, we substitute the estimated expectations back into the Taylor-expanded FOC to solve for $\omega_n^\star$
@@ -367,7 +366,7 @@ To ensure convergence, we provide an initial guess based on the second-order ($k
 #### Initial guess for polynomial equation
 The second-order expansion yields a linear FOC, providing a closed-form starting point for the solver:
 ```math
-a_n + B_n \omega_n = 0 \implies \omega_n^{(0)} = -B_n^{-1} a_n,
+a_n + W_n B_n \omega_n = 0 \implies \omega_n^{(0)} = -W_n B_n^{-1} a_n,
 ```
 where $a_n$ is a vector and $B_n$ is a matrix with columns $b_{i, n}$ varying $i$ defined by:
 ```math
@@ -389,8 +388,7 @@ holds true for any time $n$, where $G_{m + 1} = (\omega_m^\top R^e_{m + 1} + X_m
 #### Base Case:
 Let $M = n + 1$.
 From the budget constraint we have $W_{n+2} = W_{n+1} G_{n+2} + Y_{n+1}$.
-Using the formula for $M = n+1$:
-The first term yields
+Using the formula for $M = n+1$, the first term yields
 ```math
 W_{n+1} \prod_{j=n+1}^{n+1} G_{j+1} = W_{n+1} G_{n+2},
 ```
