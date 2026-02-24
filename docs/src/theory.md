@@ -1,6 +1,33 @@
 # Theory
-To understand how the package works, we will treat the algorithm proposed by
-[Brandt_etal_2005](@cite) step by step.
+To understand how the package works, we treat the algorithm proposed by [Brandt_etal_2005](@cite) as our foundation.
+While the original authors suggest the use of Taylor expansions to approximate the value function,
+most implementations are limited to a second-order (mean-variance) approximation.
+This package extends that logic by providing the generalized expressions and implementation for a Taylor expansion of any order $k$.
+By deriving the multinomial expansion of the budget constraint and the associated high-order derivatives of the value function, this tool allows for greater precision in capturing non-normalities and higher-order moments in asset returns.
+
+### Extension: Wealth-Dependent Returns
+A key feature of this implementation is that the gross return $R_{m+1}$ is not restricted to be exogenous.
+We allow $R_{m+1}$ to depend on the current level of wealth $W_m$ through the following structure:
+```math
+    R_{m+1} = X_m + \frac{Y_m}{W_m}
+```
+where $X_m$ and $Y_m$ are functions of state variables contained in $Z_m$.
+This formulation is particularly powerful as it allows the algorithm to incorporate
+**non-tradeable income or fixed costs**.
+For instance, if $Y_m$ represents labor income, the budget constraint correctly captures that
+income is added to wealth regardless of the portfolio choice
+$\omega_m$.
+
+#### Example
+Consider an investor who receives a stochastic labor income $O_n$ at each timestep and saves a
+proportion $p \in [0,1]$ of that income.
+Let $R^f_n$ be the gross risk-free rate.
+The wealth at time $n+1$ is:
+```math
+    W_{n+1} = W_n (\omega_n^\top R^e_{n+1} + R^f_n) + p O_n
+```
+By setting $X_n = R^f_n$ and $Y_n = p O_n$,
+this matches our budget constraint $W_{n+1} = W_n (\omega_n^\top R^e_{n+1} + R_{n+1})$.
 
 
 ## Goal of the algorithm
@@ -12,21 +39,21 @@ of their wealth at the terminal date $M$ by trading $N$ risky assets and a risk-
 Formally the investor's problem at timestep $n$ is
 ```math
     V_n(W_n, Z_n)
-    = \max_{\{\omega_s\}_{s = n}^{M- 1}} \mathbb{E}_n[u(W_M)]
+    = \max_{\{\omega_s\}_{m = n}^{M- 1}} \mathbb{E}_n[u(W_M)]
 ```
 subject to the sequence of budget constraints
 ```math
-    W_{m + 1} = W_m (\omega_s^\top R^e_{m + 1} + R_{m + 1})
+    W_{m + 1} = W_m (\omega_m^\top R^e_{m + 1} + R_{m + 1})
 ```
-for all $s \geq n$.
+for all $m \geq n$.
 Here $R^e_{m + 1}$ can be interpreted as the excess return of the risky assets over the risk-ree
 asset, and $R_{m + 1}$ is the gross return of other processes that _may_ depend on wealth
 $W_m$.
-Furthermore, $\{\omega_s\}_{s=n}^{M}$ is the sequence of portfolio weights chosen at times
+Furthermore, $\{\omega_s\}_{m=n}^{M}$ is the sequence of portfolio weights chosen at times
 $m = n, \ldots, M$ and $u$ is the investor's utility function.
 The process $Z_n$ is a vector of state variables that are relevant for the investor's decision making.
 Lastly, the function $u$ denotes the utility function of the investor.
-The goal of this package is to find $\{\omega_s\}_{s=1}^{M}$
+The goal of this package is to find $\{\omega_m\}_{m=1}^{M}$
 
 ## Solution of the algorithm
 The goal of this section is to give the final solution of the algorithm.
@@ -45,7 +72,7 @@ $\omega_m^{\star}$ is the vector of optimal portfolio weights at timestep $m$.
 Furthermore, let us assume that the current timestep is denoted by $n$ and let us also define
 ```math
     \hat W_{M + 1} = W_n R_{n + 1}
-        \prod_{m = n + 1}^{M} ((\omega_m^{\star})^\top R^e_{m + 1} + R_{s + 1}).
+        \prod_{m = n + 1}^{M} ((\omega_m^{\star})^\top R^e_{m + 1} + R_{m + 1}).
 ```
 
 ### Result
@@ -59,7 +86,7 @@ $k$
     \sum_{r = 1}^{k} \frac{W_t^{r - 1}}{(r - 1)!}  &\Biggl(\sum_{k_1 + \ldots + k_N = r - 1}
     \binom{r - 1}{k_1, \ldots, k_N} \prod_{i=1}^N (\omega_n^i)^{k_i} \times \\
    &\mathbb{E}_n \left[\partial^{r} u(\hat W_{M + 1})
-      \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1})^r
+      \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_{m})^r
       \prod_{i=1}^N (R^i_{n + 1})^{k_i} R^e_{n+1}\right]\Biggr) = 0,
 \end{aligned}
 ```
@@ -195,17 +222,60 @@ and denote:
 ```
 Then:
 ```math
-\partial^{r}_1 V_{n + 1}(W_n R_{n + 1}, Z_{n + 1}) = \mathbb{E}_{n + 1} \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1})^r \right].
+\partial^{r}_1 V_{n + 1}(W_n R_{n + 1}, Z_{n + 1})
+= \mathbb{E}_{n + 1} \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_m)^r \right].
 ```
 
 
 #### Proof
+Since we are interested in taking the derivative of the first argument of the value function
+$V_{n + 1}$, we need to make the dependence of $W_{n + 1}$ (the first argument) as clear as possible.
+For that reason we will first rewrite the budget constraint after which we show the above.
+
+Recall that the budget constraint is given by
+```math
+    W_{m + 1} = W_m (\omega_m^\top R^e_{m + 1} + R_{m + 1})
+```
+where $R_{m + 1} = X_{m} + Y_m / W_m$.
+Defining $G_{m + 1} = (\omega_m^\top R^e_{m + 1} + X_m)$ and rewriting the budget constraint to
+```math
+    W_{m + 1} = W_m (\omega_m^\top R^e_{m + 1} + X_m) + Y_m,
+```
+we can write
+```math
+    W_{M + 1} = W_{n + 1} \left(\prod_{m = n + 1}^{M} G_{m + 1}\right)
+    + \sum_{m = n + 1}^{M} Y_{m} \left(\prod_{p = m + 1}^{M} G_{p + 1}\right)
+```
+where $n < M$ is some arbitrary timestep.
+For the critical reader, the proof of this can be done by induction is supplied in the appendix below.
+Using this, we now note that
+```math
+\frac{\partial W_{M + 1}}{W_{n + 1}} =  \prod_{m = n + 1}^{M} G_{m + 1}.
+```
+
 Using the definition of the value function and assuming $\{\omega^\star_m\}$ is the optimal sequence, we have:
 ```math
-    V_{n + 1}(x, Z_{n + 1}) = \mathbb{E}_{n + 1} \left[ u \left( x \prod_{m = n+1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1}) \right) \right].
+    V_{n + 1}(x, Z_{n + 1})
+        = \mathbb{E}_{n + 1} \left[ u \left( W_{M + 1}\right) \right],
 ```
-Differentiating $r$ times with respect to $x$ inside the expectation yields the result.
-Taking $x = W_n R_{n + 1}$ completes the proof.
+where
+```math
+ W_{M + 1} = x \left(\prod_{m = n + 1}^{M} G_{m + 1}\right)
+    + \sum_{m = n + 1}^{M} Y_{m} \left(\prod_{p = m + 1}^{M} G_{p + 1}\right)
+```
+Using the Leibniz rule to differentiate under the expectation sign, we compute the $r$-th order derivative of the value function with respect to its first argument $x$ which is
+```math
+    \partial_1^{r} V_{n + 1}(x, Z_{n + 1}) = \mathbb{E}_{n + 1} \left[ \frac{\partial^r}{\partial x^r} u(W_{M + 1}) \right].
+```
+By the chain rule, and noting that $W_{M+1}$ is an affine function of $x$, the first derivative is:$$\frac{\partial}{\partial x} u(W_{M+1}) = u'(W_{M+1}) \frac{\partial W_{M+1}}{\partial x} = u'(W_{M+1}) \left( \prod_{m = n + 1}^{M} G_{m+1} \right)$$Since the term $\prod G_{m+1}$ does not depend on $x$, subsequent derivatives follow a power-rule pattern for the marginal growth term. For any $r \geq 1$, we have
+```math
+\frac{\partial^r}{\partial x^r} u(W_{M+1}) = u^{(r)}(W_{M+1}) \left( \prod_{m = n + 1}^{M} G_{m+1} \right)^r.
+```
+Substituting the expression for the terminal wealth evaluated at the specific point $x = W_n R_{n+1}$, which we denote as $\hat{W}_{M+1}$, gives
+```math
+\partial_1^{r} V_{n + 1}(W_n R_{n+1}, Z_{n + 1}) = \mathbb{E}_{n + 1} \left[ u^{(r)}(\hat{W}_{M+1}) \left( \prod_{m = n + 1}^{M} G_{m+1} \right)^r \right].
+```
+This yields the desired result, expressing the derivative of the value function solely in terms of the utility function's derivatives, the realized future wealth, and the marginal returns on investment.
 
 
 
@@ -216,12 +286,17 @@ The first order conditions (FOC) are given by:
 ```math
 \begin{aligned}
    \sum_{r = 1}^{k} \frac{W_n^{r - 1}}{(r - 1)!}  &\Biggl(\sum_{k_1 + \dots + k_N = r - 1} \binom{r - 1}{k_1, \dots, k_N} \prod_{i=1}^N (\omega_n^i)^{k_i} \times \\
-   &\mathbb{E}_n \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1})^r \prod_{i=1}^N (R^{e, i}_{n + 1})^{k_i} R^e_{n+1} \right]\Biggr) \\
+   &\mathbb{E}_n \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_{m + 1})^r \prod_{i=1}^N (R^{e, i}_{n + 1})^{k_i} R^e_{n+1} \right]\Biggr) \\
     &+ \text{Remainder} = 0.
 \end{aligned}
 ```
 
-### Implementation concerns
+
+## High level details on implementation
+1) The processes $R^e_{n + 1}, Z_{n}$ are generated (which includes $X_n$ and $Y_n$)
+2) At time $n$, it is assumed all future portfolio choices $\omega_m^\star$ are known
+3)
+### Initial guess for polynomial equation
 In most polynomial solvers, it is necessary to provide an initial guess.
 To that end, we consider the $2$-nd order expansion ($k=2$), which yields the linear FOC:
 ```math
@@ -230,16 +305,75 @@ To that end, we consider the $2$-nd order expansion ($k=2$), which yields the li
 where $a_n$ is a vector and $B_n$ is a matrix with columns $b_{i, n}$ given by
 ```math
 \begin{aligned}
-  a_{n} &= \mathbb{E}_n \left[ u'(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1}) R^e_{n+1} \right], \\
-  b_{i, n} &= \mathbb{E}_n \left[ u''(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + R_{m + 1})^2 R^{e, i}_{n + 1} R^e_{n+1} \right].
+  a_{n} &= \mathbb{E}_n \left[ u'(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_m) R^e_{n+1} \right], \\
+  b_{i, n} &= \mathbb{E}_n \left[ u''(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_m)^2 R^{e, i}_{n + 1} R^e_{n+1} \right].
 \end{aligned}
 ```
 
+###
+The approximation $W_s \approx \hat{W}_s$ for $s > n$ effectively assumes that the
+marginal impact of the current portfolio choice $\omega_n$ on the future wealth-dependent
+returns $R_{s+1}$ is negligible. Given that $\omega_n^\top R^e_{n+1}$ represents a
+stochastic innovation to wealth, this approach is consistent with the standard
+Brandt-Santa-Clara methodology, where moments are estimated based on paths
+generated under the current best-estimate of the optimal policy.
 
 
+## Appendix
+
+### Proof of the rewritten budget constraint
+In this section we will show
+```math
+    W_{M + 1} = W_{n + 1} \left(\prod_{m = n + 1}^{M} G_{m + 1}\right)
+    + \sum_{m = n + 1}^{M} Y_{m} \left(\prod_{p = m + 1}^{M} G_{p + 1}\right).
+```
+holds true for any time $n$, where $G_{m + 1} = (\omega_m^\top R^e_{m + 1} + X_m)$.
 
 
+#### Base Case:
+Let $M = n + 1$.
+From the budget constraint we have $W_{n+2} = W_{n+1} G_{n+2} + Y_{n+1}$.
+Using the formula for $M = n+1$:
+The first term yields
+```math
+W_{n+1} \prod_{j=n+1}^{n+1} G_{j+1} = W_{n+1} G_{n+2},
+```
+while the second term yields
+```math
+\sum_{j=n+1}^{n+1} Y_j \prod_{k=j+1}^{n+1} G_{k+1} = Y_{n+1} \cdot (1) = Y_{n+1}.
+```
+where we used that the product $\prod_{k=n+2}^{n+1}$ is empty, thus equals 1.
+Hence, the base case holds.
 
+
+#### Inductive Step:
+Assume the formula holds for some $M = K$.
+That is:
+```math
+W_{K+1} = W_{n+1} \left( \prod_{j=n+1}^{K} G_{j+1} \right) + \sum_{j=n+1}^{K} Y_j \left( \prod_{k=j+1}^{K} G_{k+1} \right)
+```
+We examine the wealth at $M = K + 1$ (which is $W_{K+2}$) using the budget constraint:
+```math
+W_{K+2} = W_{K+1} G_{K+2} + Y_{K+1}
+```
+Substitute our inductive hypothesis for $W_{K+1}$
+
+```math
+    W_{K+2} = \left[ W_{n+1} \left( \prod_{j=n+1}^{K} G_{j+1} \right) + \sum_{j=n+1}^{K} Y_j \left( \prod_{k=j+1}^{K} G_{k+1} \right) \right] G_{K+2} + Y_{K+1}
+```
+
+Distribute $G_{K+2}$ into both terms
+```math
+W_{K+2} = W_{n+1} \left( \prod_{j=n+1}^{K} G_{j+1} \cdot G_{K+2} \right) + \sum_{j=n+1}^{K} Y_j \left( \prod_{k=j+1}^{K} G_{k+1} \cdot G_{K+2} \right) + Y_{K+1}
+```
+The first part merges into the product: $W_{n+1} \prod_{j=n+1}^{K+1} G_{j+1}$.
+The $G_{K+2}$ term enters the summation's product, updating the upper bound to $K+1$.
+The $Y_{K+1}$ term is equivalent to $Y_{K+1} \prod_{k=K+2}^{K+1} G_{k+1}$, which allows us to fold it into the summation as the $j = K+1$ term.
+Combining these:
+```math
+W_{K+2} = W_{n+1} \left( \prod_{j=n+1}^{K+1} G_{j+1} \right) + \sum_{j=n+1}^{K+1} Y_j \left( \prod_{k=j+1}^{K+1} G_{k+1} \right)
+```
+The formula holds for $M = K+1$.
 
 ## References
 ```@bibliography
