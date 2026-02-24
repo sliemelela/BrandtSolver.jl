@@ -5,7 +5,6 @@ most implementations are limited to a second-order (mean-variance) approximation
 This package extends that logic by providing the generalized expressions and implementation for a Taylor expansion of any order $k$.
 By deriving the multinomial expansion of the budget constraint and the associated high-order derivatives of the value function, this tool allows for greater precision in capturing non-normalities and higher-order moments in asset returns.
 
-
 ## Goal of the algorithm
 In this package we are treating a terminal wealth optimization problem.
 More specifically, in this package we consider portfolio choice problems at timesteps
@@ -55,15 +54,12 @@ The wealth at time $n+1$ is:
 By setting $X_n = R^f_n$ and $Y_n = p O_n$,
 this matches our budget constraint $W_{n+1} = W_n (\omega_n^\top R^e_{n+1} + R_{n+1})$.
 
-
-
 ## Solution of the algorithm
 The goal of this section is to give the final solution needed to set up the algorithm.
 We acknowledge that the result can look quite daunting and so it is not the expectation that the
 reader can immediately make sense of why the solution looks like it does.
 Despite this, it can help to first see where we are working towards before explaining how it is
 derived. Let us first start by specifying the notation.
-
 
 ### Notation
 Let $\omega_m = (\omega^1_m, \ldots, \omega^N_m)$ be the components of the portfolio weights
@@ -228,7 +224,6 @@ Then
 = \mathbb{E}_{n + 1} \left[ u^{(r)}(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_m)^r \right].
 ```
 
-
 #### Proof
 Since we are interested in taking the derivative of the first argument of the value function
 $V_{n + 1}$, we need to make the dependence of $W_{n + 1}$ (the first argument) as clear as possible.
@@ -279,8 +274,6 @@ Substituting the expression for the terminal wealth evaluated at the specific po
 ```
 This yields the desired result, expressing the derivative of the value function solely in terms of the utility function's derivatives, the realized future wealth, and the marginal returns on investment.
 
-
-
 ### Final result
 Using this, we can now reformulate the FOC.
 
@@ -293,18 +286,90 @@ The first order conditions (FOC) are given by:
 \end{aligned}
 ```
 
-
 ## High level details on implementation
-1) The processes $R^e_{n + 1}, Z_{n}$ are generated (which includes $X_n$ and $Y_n$)
-2) At time $n$, it is assumed all future portfolio choices $\omega_m^\star$ are known
-3)
-### Initial guess for polynomial equation
-In most polynomial solvers, it is necessary to provide an initial guess.
-To that end, we consider the $2$-nd order expansion ($k=2$), which yields the linear FOC:
+With the mathematical framework established, the implementation follows a backward-recursive simulation procedure. The process can be summarized in the following five steps:
+
+### Data generation
+First, the stochastic processes for asset returns and state variables are generated across $S$ simulation paths. This includes the excess returns $R^e_{n+1}$, and the wealth-dependent return components $X_n$ and $Y_n$ embedded within the state vector $Z_n$.
+
+### Backward Induction
+The algorithm proceeds backward in time from the penultimate step $M$. At any current timestep $n$, we assume that the optimal portfolio choices for all future periods, $\{\omega_m^\star\}_{m=n+1}^{M}$, have already been determined in previous iterations of the recursion.
+
+### Computation of Integrands
+We now choose a grid of $\mathcal{W}_n = \{W_1, \ldots, W_K\}$ at timestep $n$.
+> [!NOTE]
+> The current package only implements a static grid that is the same for each timestep.
+
+For each simulation path and current time $W_n \in \mathcal{W}_n$, we compute the realized values of the "integrands" required for the FOC.
+We define these realizations as
 ```math
-  a_n + B_n \omega_n = 0 \implies \omega_n = -B_n^{-1} a_n
+\mathcal{Y}_{n+1} = u^{(r)}(\hat{W}_{M+1}) \prod_{m=n+1}^{M} ((\omega_m^\star)^\top R^e_{m+1} + X_{m+1})^r \prod_{i=1}^N (R^{e,i}_{n+1})^{k_i} R^e_{n+1}
 ```
-where $a_n$ is a vector and $B_n$ is a matrix with columns $b_{i, n}$ given by
+These values represent the pathwise realizations of the marginal utility of wealth compounded by the marginal growth of the portfolio.
+
+### Estimation of Conditional Expectations
+The conditional expectations $\mathbb{E}_n[\mathcal{Y}_{n+1}]$ are estimated using cross-sectional regressions on the state variables $Z_n$.
+We assume the expectation can be approximated by a basis of the state variables
+```math
+\mathbb{E}_n[\mathcal{Y}_{n + 1}] = \Phi \theta
+```
+where $\phi(Z_n)$ are basis functions.
+
+To be explicit, let $Z_n = (Z_n^{(1)}, \ldots, Z_n^{(N)})$ be the vector of $N$ state variables, and let $p$ be the chosen polynomial degree. For $S$ simulation paths, the design matrix $\Phi$, the response vector $\mathcal{Y}_n$, and the coefficient vector $\theta$ are structured as follows:
+#### The Design Matrix ($\Phi$):
+This matrix, of size $S \times (N \cdot p + 1)$, contains the intercept and the powers of each state variable for every path.
+Writing $Z_{n} = (Z_{n}^{(1)}, \ldots, Z_{n}^{(N)})$ for the different state variables, and $Z_{n, i}$ for the $i$-th simulation path of state variables of $Z_n$ at time $n$, the
+design matrix is given by
+```math
+\Phi =
+\begin{pmatrix}
+1 & (Z_{n,1}^{(1)})^1 & \cdots & (Z_{n,1}^{(1)})^p & \cdots & (Z_{n,1}^{(N)})^1 & \cdots & (Z_{n,1}^{(N)})^p \\
+1 & (Z_{n,2}^{(1)})^1 & \cdots & (Z_{n,2}^{(1)})^p & \cdots & (Z_{n,2}^{(N)})^1 & \cdots & (Z_{n,2}^{(N)})^p \\
+\vdots & \vdots & \ddots & \vdots & \ddots & \vdots & \ddots & \vdots \\
+1 & (Z_{n,S}^{(1)})^1 & \cdots & (Z_{n,S}^{(1)})^p & \cdots & (Z_{n,S}^{(N)})^1 & \cdots & (Z_{n,S}^{(N)})^p
+\end{pmatrix}.
+```
+#### The Response Vector ($\mathcal{Y}$):
+This vector contains the $S$ realized values of the integrand for the specific derivative order $r$ and multinomial combination $k_i$.
+```math
+\mathcal{Y}_{n + 1} =
+\begin{pmatrix}
+\mathcal{Y}_{n+1, 1} \\
+\mathcal{Y}_{n+1, 2} \\
+\vdots \\
+\mathcal{Y}_{n+1, S}
+\end{pmatrix}.
+```
+
+#### The Coefficient Vector ($\theta$):
+Solving the regression yields the coefficients that map the state variables to the expected value.
+```math
+\theta = \begin{pmatrix} \theta_0 & \theta_{1,1} & \cdots & \theta_{1,p} & \cdots & \theta_{N,p} \end{pmatrix}^\top.
+```
+#### Regression Strategies
+To find the coefficients $\theta$, the package provides two strategies implemented in the `estimate_coefficients` functions:
+
+##### Standard OLS:
+Solves the system using a pre-computed QR factorization of $\Phi$. This is highly efficient, as the factorization $\Phi = QR$ is performed once per timestep and reused for all $r$ derivatives and multinomial combinations.
+
+##### $\alpha$-Trimmed OLS:
+To prevent extreme wealth paths (outliers) from dominating the regression, this strategy identifies the "body" of the distribution. It calculates the indices $k_{low} = \lfloor \alpha S \rfloor + 1$ and $k_{high} = \lceil (1-\alpha)S \rceil$, sorts the vector $\mathcal{Y}_{n + 1}$, and performs the regression using only the rows of $\Phi$ and elements of $\mathcal{Y}_{n + 1}$ corresponding to the sorted indices between $k_{low}$ and $k_{high}$.
+This "brute force" stabilization method involves: Sorting the realized $\mathcal{Y}_{n+1}$ across all paths. Discarding the extreme $\alpha\%$ tails (e.g., the top and bottom 1%) to remove the influence of outliers.Running the OLS regression on the remaining data to estimate the coefficients $\theta_n$.
+
+### Numerical Optimization
+Finally, we substitute the estimated expectations back into the Taylor-expanded FOC to solve for $\omega_n^\star$
+```math
+\sum_{r = 1}^{k} \frac{W_n^{r - 1}}{(r - 1)!} \left( \sum_{k_1 + \dots + k_N = r - 1} \binom{r - 1}{k_1, \dots, k_N} \prod_{i=1}^N (\omega_n^i)^{k_i} \times \mathbb{E}_n \left[ \mathcal{Y}_{n + 1}\right] \right) = 0
+```
+This polynomial equation is solved numerically.
+To ensure convergence, we provide an initial guess based on the second-order ($k=2$) approximation.
+
+#### Initial guess for polynomial equation
+The second-order expansion yields a linear FOC, providing a closed-form starting point for the solver:
+```math
+a_n + B_n \omega_n = 0 \implies \omega_n^{(0)} = -B_n^{-1} a_n,
+```
+where $a_n$ is a vector and $B_n$ is a matrix with columns $b_{i, n}$ varying $i$ defined by:
 ```math
 \begin{aligned}
   a_{n} &= \mathbb{E}_n \left[ u'(\hat{W}_{M+1}) \prod_{m = n + 1}^{M} ((\omega_m^\star)^\top R^e_{m + 1} + X_m) R^e_{n+1} \right], \\
@@ -312,17 +377,7 @@ where $a_n$ is a vector and $B_n$ is a matrix with columns $b_{i, n}$ given by
 \end{aligned}
 ```
 
-###
-The approximation $W_s \approx \hat{W}_s$ for $s > n$ effectively assumes that the
-marginal impact of the current portfolio choice $\omega_n$ on the future wealth-dependent
-returns $R_{s+1}$ is negligible. Given that $\omega_n^\top R^e_{n+1}$ represents a
-stochastic innovation to wealth, this approach is consistent with the standard
-Brandt-Santa-Clara methodology, where moments are estimated based on paths
-generated under the current best-estimate of the optimal policy.
-
-
 ## Appendix
-
 ### Proof of the rewritten budget constraint
 In this section we will show
 ```math
@@ -330,7 +385,6 @@ In this section we will show
     + \sum_{m = n + 1}^{M} Y_{m} \left(\prod_{p = m + 1}^{M} G_{p + 1}\right).
 ```
 holds true for any time $n$, where $G_{m + 1} = (\omega_m^\top R^e_{m + 1} + X_m)$.
-
 
 #### Base Case:
 Let $M = n + 1$.
@@ -347,7 +401,6 @@ while the second term yields
 where we used that the product $\prod_{k=n+2}^{n+1}$ is empty, thus equals 1.
 Hence, the base case holds.
 
-
 #### Inductive Step:
 Assume the formula holds for some $M = K$.
 That is:
@@ -359,11 +412,9 @@ We examine the wealth at $M = K + 1$ (which is $W_{K+2}$) using the budget const
 W_{K+2} = W_{K+1} G_{K+2} + Y_{K+1}
 ```
 Substitute our inductive hypothesis for $W_{K+1}$
-
 ```math
     W_{K+2} = \left[ W_{n+1} \left( \prod_{j=n+1}^{K} G_{j+1} \right) + \sum_{j=n+1}^{K} Y_j \left( \prod_{k=j+1}^{K} G_{k+1} \right) \right] G_{K+2} + Y_{K+1}
 ```
-
 Distribute $G_{K+2}$ into both terms
 ```math
 W_{K+2} = W_{n+1} \left( \prod_{j=n+1}^{K} G_{j+1} \cdot G_{K+2} \right) + \sum_{j=n+1}^{K} Y_j \left( \prod_{k=j+1}^{K} G_{k+1} \cdot G_{K+2} \right) + Y_{K+1}
