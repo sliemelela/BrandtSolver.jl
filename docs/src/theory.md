@@ -309,17 +309,19 @@ These values represent the pathwise realizations of the marginal utility of weal
 The conditional expectations $\mathbb{E}_n[\mathcal{Y}_{n+1}]$ are estimated using cross-sectional regressions on the state variables $Z_n$.
 We assume the expectation can be approximated by a basis of the state variables
 ```math
-\mathbb{E}_n[\mathcal{Y}_{n + 1}] = \Phi \theta
+\mathbb{E}_n[\mathcal{Y}_{n + 1}] = \Phi_n \theta_n,
 ```
-where $\phi(Z_n)$ are basis functions.
+where $\Phi_n$ is the design matrix and $\theta_n$ are the parameters to be estimated.
 
-To be explicit, let $Z_n = (Z_n^{(1)}, \ldots, Z_n^{(N)})$ be the vector of $N$ state variables, and let $p$ be the chosen polynomial degree. For $S$ simulation paths, the design matrix $\Phi$, the response vector $\mathcal{Y}_n$, and the coefficient vector $\theta$ are structured as follows:
-#### The Design Matrix ($\Phi$):
+To be explicit, let $Z_n = (Z_n^{(1)}, \ldots, Z_n^{(N)})$ be the vector of $N$ state variables, and let $p$ be the chosen polynomial degree.
+For $S$ simulation paths, the design matrix $\Phi_n$, the response vector $\mathcal{Y}_{n + 1}$, and the coefficient vector $\theta_n$ are structured as follows:
+
+#### The Design Matrix ($\Phi_n$):
 This matrix, of size $S \times (N \cdot p + 1)$, contains the intercept and the powers of each state variable for every path.
 Writing $Z_{n} = (Z_{n}^{(1)}, \ldots, Z_{n}^{(N)})$ for the different state variables, and $Z_{n, i}$ for the $i$-th simulation path of state variables of $Z_n$ at time $n$, the
 design matrix is given by
 ```math
-\Phi =
+\Phi_n =
 \begin{pmatrix}
 1 & (Z_{n,1}^{(1)})^1 & \cdots & (Z_{n,1}^{(1)})^p & \cdots & (Z_{n,1}^{(N)})^1 & \cdots & (Z_{n,1}^{(N)})^p \\
 1 & (Z_{n,2}^{(1)})^1 & \cdots & (Z_{n,2}^{(1)})^p & \cdots & (Z_{n,2}^{(N)})^1 & \cdots & (Z_{n,2}^{(N)})^p \\
@@ -342,16 +344,16 @@ This vector contains the $S$ realized values of the integrand for the specific d
 #### The Coefficient Vector ($\theta$):
 Solving the regression yields the coefficients that map the state variables to the expected value.
 ```math
-\theta = \begin{pmatrix} \theta_0 & \theta_{1,1} & \cdots & \theta_{1,p} & \cdots & \theta_{N,p} \end{pmatrix}^\top.
+\theta_n = \begin{pmatrix} \theta_0 & \theta_{1,1} & \cdots & \theta_{1,p} & \cdots & \theta_{N,p} \end{pmatrix}^\top.
 ```
 #### Regression Strategies
-To find the coefficients $\theta$, the package provides two strategies implemented in the `estimate_coefficients` functions:
+To find the coefficients $\theta_n$, the package provides two strategies implemented in the `estimate_coefficients` functions:
 
 ##### Standard OLS:
-Solves the system using a pre-computed QR factorization of $\Phi$. This is highly efficient, as the factorization $\Phi = QR$ is performed once per timestep and reused for all $r$ derivatives and multinomial combinations.
+Solves the system using a pre-computed QR factorization of $\Phi_n$. This is highly efficient, as the factorization $\Phi_n = QR$ is performed once per timestep and reused for all $r$ derivatives and multinomial combinations.
 
 ##### $\alpha$-Trimmed OLS:
-To prevent extreme wealth paths (outliers) from dominating the regression, this strategy identifies the "body" of the distribution. It calculates the indices $k_{low} = \lfloor \alpha S \rfloor + 1$ and $k_{high} = \lceil (1-\alpha)S \rceil$, sorts the vector $\mathcal{Y}_{n + 1}$, and performs the regression using only the rows of $\Phi$ and elements of $\mathcal{Y}_{n + 1}$ corresponding to the sorted indices between $k_{low}$ and $k_{high}$.
+To prevent extreme wealth paths (outliers) from dominating the regression, this strategy identifies the "body" of the distribution. It calculates the indices $k_{low} = \lfloor \alpha S \rfloor + 1$ and $k_{high} = \lceil (1-\alpha)S \rceil$, sorts the vector $\mathcal{Y}_{n + 1}$, and performs the regression using only the rows of $\Phi_n$ and elements of $\mathcal{Y}_{n + 1}$ corresponding to the sorted indices between $k_{low}$ and $k_{high}$.
 This "brute force" stabilization method involves: Sorting the realized $\mathcal{Y}_{n+1}$ across all paths. Discarding the extreme $\alpha\%$ tails (e.g., the top and bottom 1%) to remove the influence of outliers. Running the OLS regression on the remaining data to estimate the coefficients $\theta_n$.
 
 ### Numerical Optimization

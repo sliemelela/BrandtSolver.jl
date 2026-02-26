@@ -9,26 +9,50 @@ asset returns, non-tradable income), analytical solutions to portfolio choice pr
 to dynamically approximate the optimal portfolio policy backwards through time.
 
 More specifically, in this package we consider portfolio choice problems at timesteps
-$n = 1, 2, \ldots, \bar M$, where $M + 1$ is some terminal timestep.
-This portfolio choice problem at time $n$ is defined by an investor who maximizes the expected utility
-of their wealth at the terminal date $M$ by trading $N$ risky assets and a risk-free asset (cash).
-Formally the investor's problem at time $n$ is
+$n = 1, 2, \ldots, M$, where $M + 1$ is some terminal timestep.
+This portfolio choice problem at timestep $n$ is defined by an investor who maximizes the expected utility
+of their wealth at the terminal timestep $M + 1$ by trading $N$ risky assets and a risk-free asset (cash).
+Formally the investor's problem at timestep $n$ is
 ```math
     V_n(W_n, Z_n)
-    = \max_{\{\omega_s\}_{s = n}^{M}} \mathbb{E}_n[u(W_T)]
+    = \max_{\{\omega_s\}_{m = n}^{M}} \mathbb{E}_n[u(W_{M + 1})]
 ```
 subject to the sequence of budget constraints
 ```math
-    W_{s + 1} = W_s (\omega_s^\top R^e_{s + 1} + R_{s + 1})
+    W_{m + 1} = W_m (\omega_m^\top R^e_{m + 1} + R_{m + 1})
 ```
-for all $s \geq n$.
-Here $R^e_{s + 1}$ can be interpreted as the excess return of the risky assets over the risk-ree
-asset, and $R_{s + 1}$ is the gross return of other processes that _may_ depend on wealth
-$W_s$.
-Furthermore, $\{\omega_s\}_{s=n}^{T - 1}$ is the sequence of portfolio weights chosen at times
-$s = n, \ldots, \bar N - 1$ and $u$ is the investor's utility function.
-The process $Z_t$ is a vector of state variables that are relevant for the investor's decision making.
-The goal of this package is to find $\{\omega_s\}_{s=0}^{T - 1}$
+for all $m \geq n$.
+Here $R^e_{m + 1}$ can be interpreted as the excess return of the risky assets over the risk-free
+asset, and $R_{m + 1}$ is the gross return of other processes that _may_ depend on wealth
+$W_m$.
+Furthermore, $\{\omega_s\}_{m=n}^{M}$ is the sequence of portfolio weights chosen at times
+$m = n, \ldots, M$ and $u$ is the investor's utility function.
+The process $Z_n$ is a vector of state variables that are relevant for the investor's decision making.
+The goal of this package is to find $\{\omega_m\}_{m=1}^{M}$.
+
+### Extension: Wealth-Dependent Returns
+A key feature of this implementation is that the gross return $R_{m+1}$ is not restricted to be exogenous.
+We allow $R_{m+1}$ to depend on the current level of wealth $W_m$ through the following structure:
+```math
+    R_{m+1} = X_m + \frac{Y_m}{W_m}
+```
+where $X_m$ and $Y_m$ are functions of state variables contained in $Z_m$.
+This formulation is particularly powerful as it allows the algorithm to incorporate
+**non-tradeable income or fixed costs**.
+For instance, if $Y_m$ represents labor income, the budget constraint correctly captures that
+income is added to wealth regardless of the portfolio choice
+$\omega_m$.
+
+#### Example
+Consider an investor who receives a stochastic labor income $O_n$ at each timestep and saves a
+proportion $p \in [0,1]$ of that income.
+Let $R^f_n$ be the gross risk-free rate.
+The wealth at time $n+1$ is:
+```math
+    W_{n+1} = W_n (\omega_n^\top R^e_{n+1} + R^f_n) + p O_n
+```
+By setting $X_n = R^f_n$ and $Y_n = p O_n$,
+this matches our budget constraint $W_{n+1} = W_n (\omega_n^\top R^e_{n+1} + R_{n+1})$.
 
 
 ## Features

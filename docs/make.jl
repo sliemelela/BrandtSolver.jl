@@ -26,6 +26,7 @@ makedocs(;
         "Home" => "index.md",
         "Theory (Background)" => "theory.md",
         "Tutorial" => "tutorial.md",
+        "Tests" => "test.md",
         "Internal Architecture" => "architecture.md",
         "API Reference" => "api.md",
     ],
