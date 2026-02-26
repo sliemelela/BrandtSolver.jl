@@ -344,7 +344,7 @@ This vector contains the $S$ realized values of the integrand for the specific d
 #### The Coefficient Vector ($\theta$):
 Solving the regression yields the coefficients that map the state variables to the expected value.
 ```math
-\theta_n = \begin{pmatrix} \theta_0 & \theta_{1,1} & \cdots & \theta_{1,p} & \cdots & \theta_{N,p} \end{pmatrix}^\top.
+\theta_n = \begin{pmatrix} \theta^0_n & \theta^{1,1}_n & \cdots & \theta^{1,p}_n & \cdots & \theta^{N,p}_n \end{pmatrix}^\top.
 ```
 #### Regression Strategies
 To find the coefficients $\theta_n$, the package provides two strategies implemented in the `estimate_coefficients` functions:
