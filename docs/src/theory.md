@@ -354,7 +354,10 @@ Solves the system using a pre-computed QR factorization of $\Phi_n$. This is hig
 
 ##### $\alpha$-Trimmed OLS:
 To prevent extreme wealth paths (outliers) from dominating the regression, this strategy identifies the "body" of the distribution. It calculates the indices $k_{low} = \lfloor \alpha S \rfloor + 1$ and $k_{high} = \lceil (1-\alpha)S \rceil$, sorts the vector $\mathcal{Y}_{n + 1}$, and performs the regression using only the rows of $\Phi_n$ and elements of $\mathcal{Y}_{n + 1}$ corresponding to the sorted indices between $k_{low}$ and $k_{high}$.
-This "brute force" stabilization method involves: Sorting the realized $\mathcal{Y}_{n+1}$ across all paths. Discarding the extreme $\alpha\%$ tails (e.g., the top and bottom 1%) to remove the influence of outliers. Running the OLS regression on the remaining data to estimate the coefficients $\theta_n$.
+This "brute force" stabilization method involves:
+- Sorting the realized $\mathcal{Y}_{n+1}$ across all paths.
+- Discarding the extreme $\alpha\%$ tails (e.g., the top and bottom 1%) to remove the influence of outliers.
+- Running the OLS regression on the remaining data to estimate the coefficients $\theta_n$.
 
 ### Numerical Optimization
 Finally, we substitute the estimated expectations back into the Taylor-expanded FOC to solve for $\omega_n^\star$
