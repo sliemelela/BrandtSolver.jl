@@ -1,8 +1,14 @@
 using BrandtSolver
 using Documenter
+using DocumenterCitations
 
 # Make sure to include BrandtSolver in the load path for doctests
 DocMeta.setdocmeta!(BrandtSolver, :DocTestSetup, :(using BrandtSolver); recursive=true)
+
+bib = CitationBibliography(
+    joinpath(@__DIR__, "src", "bibliography.bib");
+    style=:numeric
+)
 
 makedocs(;
     modules=[BrandtSolver],
@@ -18,10 +24,13 @@ makedocs(;
     checkdocs = :exports,
     pages=[
         "Home" => "index.md",
+        "Theory (Background)" => "theory.md",
         "Tutorial" => "tutorial.md",
+        "Tests" => "test.md",
         "Internal Architecture" => "architecture.md",
         "API Reference" => "api.md",
     ],
+    plugins=[bib],
 )
 
 deploydocs(;

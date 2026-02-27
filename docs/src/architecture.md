@@ -8,6 +8,22 @@ proposed by Brandt et al. (2005).
 The solver works backwards through time (Dynamic Programming) using cross-sectional regressions
 to approximate conditional expectations.
 
+## Theory
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ## High-Level Execution Flow
 The entire algorithm is orchestrated by `solve_portfolio_problem`.
 If we have a simulation with $M$ decision steps ($t_1, t_2, \dots, t_M$),
