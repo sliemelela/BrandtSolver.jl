@@ -14,7 +14,7 @@ To test this, we simulate a market environment designed to mimic Merton's contin
 We then couple this with a Geometric Brownian Motion stock.
 We run the full simulation-based Brandt solver on this data. If the regression mechanics, Taylor expansions, and polynomial optimizers are correct, the complex simulation algorithm must collapse back to the simple analytical Merton fraction.
 
-Why it matters: This proves that the numerical solver is fundamentally unbiased in a baseline environment and successfully recovers known closed-form solutions.
+This proves that the numerical solver is fundamentally unbiased in a baseline environment and successfully recovers known closed-form solutions.
 
 ## 2. The Economic Perturbation Test
 By definition, the optimal portfolio weight $\omega^*$ returned by the First Order Conditions must maximize the expected utility of the investor.
@@ -23,9 +23,9 @@ Therefore, any manual deviation from this optimal weightâ€”no matter how smallâ€
 ### The Test (validity_test.jl):
 Once the solver calculates the optimal policies, we perform a "Perturbation Check".
 We define a small constant perturbation $\epsilon = 0.05$ and calculate the Expected Utility for three scenarios:
-- $J(\omega^*)$: Using the solver's optimal weights.
-- $J(\omega^* + \epsilon)$: Forcing the agent to slightly over-invest in the risky assets.
-- $J(\omega^* - \epsilon)$: Forcing the agent to slightly under-invest in the risky assets.
+- $J(\omega^*):$ Using the solver's optimal weights.
+- $J(\omega^* + \epsilon):$ Forcing the agent to slightly over-invest in the risky assets.
+- $J(\omega^* - \epsilon):$ Forcing the agent to slightly under-invest in the risky assets.
 
 The test dynamically verifies that $J(\omega^*) > J(\omega^* + \epsilon)$ and $J(\omega^*) > J(\omega^* - \epsilon)$.
 This guarantees that the non-linear root-finding algorithm has actually identified a true utility maximum, rather than converging to a local minimum or an inflection point.
@@ -36,7 +36,8 @@ Therefore, at time $M$, the conditionally expected utility of optimally trading 
 
 ### The Test (visual_test.jl):
 Using our `plot_value_vs_utility` tool, we forward-simulate the portfolio from $M$ to $M + 1$ applying the optimal policy.
-We plot the resulting conditionally expected utility against the theoretical $U(W)$ curve.Why it matters: This acts as a boundary condition check.
+We plot the resulting conditionally expected utility against the theoretical $U(W)$ curve.
+This acts as a boundary condition check.
 If the regression was unstable or the Taylor expansion was poorly specified, the predicted expected utility would wildly diverge from the true $U(W)$ curve.
 
 ## 4. Robustness to Singularities
