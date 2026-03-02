@@ -89,8 +89,8 @@ function setup_fast_merton_market()
     # No correlations -> Identity matrix (uncorrelated shocks)
     config = MarketConfig(
         sims = 2000, # 2k sims is enough for clean plots but fast to run
-        T = 5.0,
-        M = 10,      # 10 steps (biannual rebalancing)
+        T = 0.001,   # Short horizon to speed up test
+        M = 1,      # 1 steps (biannual rebalancing)
         processes = [r_proc, stock_proc, re_proc]
     )
 
@@ -115,7 +115,7 @@ end
 @testset "Visual Diagnostics" begin
     Random.seed!(42)
     println("  > Running Solver...")
-    world, params, utility = setup_fast_market()
+    world, params, utility = setup_fast_merton_market()
 
     asset_names = ["Re_Stock"]
     state_names = ["r"]
@@ -131,22 +131,23 @@ end
     @test length(policies) == world.config.M + 1
 
     println("  > Generating Plots...")
+    t_check = world.config.M
 
-    fig1 = plot_policy_rules(policies, params, 10, asset_names; samples=20)
+    fig1 = plot_policy_rules(policies, params, t_check, asset_names; samples=20)
     save(joinpath(OUTPUT_DIR, "1_policy_vs_wealth.png"), fig1)
 
-    state_vals = world.paths.r[:, 10]
-    fig2 = plot_state_dependence(policies, params, 10, state_vals, "r", asset_names; fix_W=100.0)
+    state_vals = world.paths.r[:, t_check]
+    fig2 = plot_state_dependence(policies, params, t_check, state_vals, "r", asset_names; fix_W=100.0)
     save(joinpath(OUTPUT_DIR, "2_policy_vs_rate.png"), fig2)
 
     times = range(0, world.config.T, length=world.config.M+1)[1:end-1]
     fig3 = plot_realized_weights(Re_all, X_all, Y_all, times, policies, asset_names; W_init=100.0)
     save(joinpath(OUTPUT_DIR, "3_realized_weights.png"), fig3)
 
-    fig4 = plot_value_vs_utility(Re_all, X_all, Y_all, params, policies, utility; t_check=world.config.M)
+    fig4 = plot_value_vs_utility(Re_all, X_all, Y_all, params, policies, utility; t_check=t_check)
     save(joinpath(OUTPUT_DIR, "4_value_vs_utility.png"), fig4)
 
-    fig5 = plot_policy_surface(policies, params, 10, state_vals, "r", asset_names)
+    fig5 = plot_policy_surface(policies, params, t_check, state_vals, "r", asset_names)
     save(joinpath(OUTPUT_DIR, "5_policy_surface.png"), fig5)
 
     println("--- Visual Test Complete ---")

@@ -13,7 +13,7 @@ of their wealth at the terminal timestep $M + 1$ by trading $N$ risky assets and
 Formally the investor's problem at timestep $n$ is
 ```math
     V_n(W_n, Z_n)
-    = \max_{\{\omega_s\}_{m = n}^{M}} \mathbb{E}_n[u(W_{M + 1})]
+    = \max_{\{\omega_m\}_{m = n}^{M}} \mathbb{E}_n[u(W_{M + 1})]
 ```
 subject to the sequence of budget constraints
 ```math
